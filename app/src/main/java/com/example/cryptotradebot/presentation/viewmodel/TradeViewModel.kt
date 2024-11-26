@@ -9,17 +9,16 @@ import com.example.cryptotradebot.domain.use_case.GetCandlesticksUseCase
 import com.example.cryptotradebot.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class DashboardViewModel @Inject constructor(
+class TradeViewModel @Inject constructor(
     private val getCandlesticksUseCase: GetCandlesticksUseCase
 ) : ViewModel() {
 
-    private val _state = mutableStateOf(DashboardState())
-    val state: State<DashboardState> = _state
+    private val _state = mutableStateOf(TradeState())
+    val state: State<TradeState> = _state
 
     private var fetchJob: Job? = null
 
@@ -49,18 +48,17 @@ class DashboardViewModel @Inject constructor(
             when (val result = getCandlesticksUseCase(
                 symbol = "${_state.value.selectedCoin}USDT",
                 interval = _state.value.selectedInterval,
-                limit = 1
+                limit = 50
             )) {
                 is Resource.Success -> {
                     result.data?.let { candlesticks ->
-                        if (candlesticks.isNotEmpty()) {
-                            _state.value = _state.value.copy(
-                                candlestick = candlesticks.first(),
-                                lastUpdateTime = System.currentTimeMillis(),
-                                isLoading = false,
-                                error = null
-                            )
-                        }
+                        _state.value = _state.value.copy(
+                            candlesticks = candlesticks,
+                            currentCandlestick = candlesticks.firstOrNull(),
+                            lastUpdateTime = System.currentTimeMillis(),
+                            isLoading = false,
+                            error = null
+                        )
                     }
                 }
                 is Resource.Error -> {
@@ -76,8 +74,9 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    data class DashboardState(
-        val candlestick: Candlestick? = null,
+    data class TradeState(
+        val candlesticks: List<Candlestick> = emptyList(),
+        val currentCandlestick: Candlestick? = null,
         val isLoading: Boolean = false,
         val error: String? = null,
         val selectedCoin: String = "BTC",
