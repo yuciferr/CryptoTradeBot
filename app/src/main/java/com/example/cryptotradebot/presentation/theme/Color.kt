@@ -1,4 +1,4 @@
-package com.example.cryptotradebot.ui.theme
+package com.example.cryptotradebot.presentation.theme
 
 import androidx.compose.ui.graphics.Color
 
