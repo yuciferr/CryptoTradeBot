@@ -24,26 +24,31 @@ class DashboardViewModel @Inject constructor(
     private var fetchJob: Job? = null
 
     init {
-        startFetchingData()
+        getCryptoData()
     }
 
-    private fun startFetchingData() {
-        fetchJob?.cancel()
-        fetchJob = viewModelScope.launch {
-            while (true) {
-                getCryptoData()
-                delay(5000) // Her 5 saniyede bir güncelle
-            }
-        }
+    fun onCoinSelect(coin: String) {
+        _state.value = _state.value.copy(selectedCoin = coin)
+        getCryptoData()
+    }
+
+    fun onIntervalSelect(interval: String) {
+        _state.value = _state.value.copy(selectedInterval = interval)
+        getCryptoData()
+    }
+
+    fun refreshData() {
+        getCryptoData()
     }
 
     private fun getCryptoData() {
-        viewModelScope.launch {
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
             _state.value = _state.value.copy(isLoading = true)
             
             when (val result = getCandlesticksUseCase(
-                symbol = "BTCUSDT",
-                interval = "1m",
+                symbol = "${_state.value.selectedCoin}USDT",
+                interval = _state.value.selectedInterval,
                 limit = 1
             )) {
                 is Resource.Success -> {
@@ -51,6 +56,7 @@ class DashboardViewModel @Inject constructor(
                         if (candlesticks.isNotEmpty()) {
                             _state.value = _state.value.copy(
                                 candlestick = candlesticks.first(),
+                                lastUpdateTime = System.currentTimeMillis(),
                                 isLoading = false,
                                 error = null
                             )
@@ -70,14 +76,23 @@ class DashboardViewModel @Inject constructor(
         }
     }
 
-    override fun onCleared() {
-        super.onCleared()
-        fetchJob?.cancel()
-    }
-
     data class DashboardState(
         val candlestick: Candlestick? = null,
         val isLoading: Boolean = false,
-        val error: String? = null
+        val error: String? = null,
+        val selectedCoin: String = "BTC",
+        val selectedInterval: String = "1h",
+        val lastUpdateTime: Long = 0
     )
+
+    companion object {
+        val availableCoins = listOf("BTC", "ETH", "FET", "AVAX", "SOL", "RNDR")
+        val availableIntervals = listOf(
+            Pair("1d", "1 Günlük"),
+            Pair("4h", "4 Saatlik"),
+            Pair("1h", "1 Saatlik"),
+            Pair("15m", "15 Dakikalık"),
+            Pair("5m", "5 Dakikalık")
+        )
+    }
 } 
