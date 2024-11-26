@@ -48,13 +48,13 @@ class TradeViewModel @Inject constructor(
             when (val result = getCandlesticksUseCase(
                 symbol = "${_state.value.selectedCoin}USDT",
                 interval = _state.value.selectedInterval,
-                limit = 50
+                limit = 100
             )) {
                 is Resource.Success -> {
                     result.data?.let { candlesticks ->
                         _state.value = _state.value.copy(
                             candlesticks = candlesticks,
-                            currentCandlestick = candlesticks.firstOrNull(),
+                            currentCandlestick = candlesticks.lastOrNull(),
                             lastUpdateTime = System.currentTimeMillis(),
                             isLoading = false,
                             error = null
@@ -85,7 +85,7 @@ class TradeViewModel @Inject constructor(
     )
 
     companion object {
-        val availableCoins = listOf("BTC", "ETH", "FET", "AVAX", "SOL", "RENDER")
+        val availableCoins = listOf("BTC", "ETH", "FET", "AVAX", "SOL", "RNDR")
         val availableIntervals = listOf(
             Pair("1d", "1 Günlük"),
             Pair("4h", "4 Saatlik"),
