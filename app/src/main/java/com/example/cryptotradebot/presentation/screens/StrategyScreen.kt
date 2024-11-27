@@ -14,16 +14,19 @@ import com.example.cryptotradebot.presentation.viewmodel.StrategyViewModel
 @Composable
 fun StrategyScreen(
     navController: NavController,
+    coin: String,
+    timeframe: String,
     viewModel: StrategyViewModel = hiltViewModel()
 ) {
+    LaunchedEffect(coin, timeframe) {
+        viewModel.onCoinSelect(coin)
+        viewModel.onTimeframeSelect(timeframe)
+    }
+
     val state = viewModel.state.value
     var showNewStrategyDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        bottomBar = {
-            CryptoBottomNavigation(navController = navController)
-        }
-    ) { paddingValues ->
+    Scaffold { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -33,43 +36,16 @@ fun StrategyScreen(
             // Coin ve fiyat bilgileri
             CoinPriceHeader(
                 coin = state.selectedCoin,
+                timeframe = state.selectedTimeframe,
                 price = state.currentPrice,
                 volume = state.volume24h,
                 lastUpdateTime = state.lastUpdateTime,
                 availableCoins = StrategyViewModel.availableCoins,
+                availableTimeframes = StrategyViewModel.availableTimeframes,
                 onCoinSelect = viewModel::onCoinSelect,
+                onTimeframeSelect = viewModel::onTimeframeSelect,
                 modifier = Modifier.padding(vertical = 8.dp)
             )
-
-            // Timeframe seçici
-            ExposedDropdownMenuBox(
-                expanded = false,
-                onExpandedChange = {},
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
-                TextField(
-                    value = StrategyViewModel.availableTimeframes.find { it.first == state.selectedTimeframe }?.second ?: "",
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .menuAnchor()
-                )
-                ExposedDropdownMenu(
-                    expanded = false,
-                    onDismissRequest = {}
-                ) {
-                    StrategyViewModel.availableTimeframes.forEach { (value, label) ->
-                        DropdownMenuItem(
-                            text = { Text(label) },
-                            onClick = { viewModel.onTimeframeSelect(value) }
-                        )
-                    }
-                }
-            }
 
             // İndikatör editörü
             IndicatorEditor(

@@ -22,8 +22,15 @@ fun NavGraph(navController: NavHostController) {
         composable(Screen.Dashboard.route) {
             DashboardScreen(navController)
         }
+        composable(Screen.Trade.route) {
+            TradeScreen(navController)
+        }
         composable(Screen.Strategy.route) {
-            StrategyScreen(navController)
+            StrategyScreen(
+                navController = navController,
+                coin = navController.previousBackStackEntry?.savedStateHandle?.get<String>("selectedCoin") ?: "BTC",
+                timeframe = navController.previousBackStackEntry?.savedStateHandle?.get<String>("selectedTimeframe") ?: "1h"
+            )
         }
         composable(Screen.Backtest.route) {
             BacktestScreen(navController)

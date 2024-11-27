@@ -1,24 +1,27 @@
 package com.example.cryptotradebot.presentation.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
-import com.example.cryptotradebot.presentation.composable.CandlestickCard
-import com.example.cryptotradebot.presentation.composable.CryptoBottomNavigation
+import com.example.cryptotradebot.presentation.composable.*
+import com.example.cryptotradebot.presentation.navigation.Screen
 import com.example.cryptotradebot.presentation.viewmodel.TradeViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun TradeScreen(
     navController: NavController,
@@ -26,17 +29,30 @@ fun TradeScreen(
 ) {
     val state = viewModel.state.value
     val dateFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+    val scrollState = rememberScrollState()
 
     Scaffold(
         bottomBar = {
             CryptoBottomNavigation(navController = navController)
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = {
+                    navController.currentBackStackEntry?.savedStateHandle?.set("selectedCoin", state.selectedCoin)
+                    navController.currentBackStackEntry?.savedStateHandle?.set("selectedTimeframe", state.selectedInterval)
+                    navController.navigate(Screen.Strategy.route)
+                }
+            ) {
+                Icon(Icons.Default.Build, "Strateji Oluştur")
+            }
         }
     ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(16.dp)
+                .padding(horizontal = 16.dp)
+                .verticalScroll(scrollState)
         ) {
             // Üst Bar
             Row(
@@ -44,9 +60,6 @@ fun TradeScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                IconButton(onClick = { navController.navigateUp() }) {
-                    Icon(Icons.Default.ArrowBack, "Geri")
-                }
                 Text(
                     text = "${state.selectedCoin}/USDT",
                     style = MaterialTheme.typography.headlineMedium
@@ -67,44 +80,75 @@ fun TradeScreen(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Interval seçim dropdown'u
-            ExposedDropdownMenuBox(
-                expanded = false,
-                onExpandedChange = { },
+            // Coin Seçimi
+            Text(
+                text = "Coin Seçimi",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(vertical = 8.dp)
             ) {
-                TextField(
-                    value = TradeViewModel.availableIntervals.find { it.first == state.selectedInterval }?.second ?: "",
-                    onValueChange = { },
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = false) },
-                    modifier = Modifier.menuAnchor()
+                items(TradeViewModel.availableCoins) { coin ->
+                    FilterChip(
+                        selected = state.selectedCoin == coin,
+                        onClick = { viewModel.onCoinSelect(coin) },
+                        label = { Text(coin) }
+                    )
+                }
+            }
+
+            // Zaman Aralığı Seçimi
+            Text(
+                text = "Zaman Aralığı",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 16.dp)
+            )
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier.padding(vertical = 8.dp)
+            ) {
+                items(TradeViewModel.availableIntervals) { interval ->
+                    FilterChip(
+                        selected = state.selectedInterval == interval.first,
+                        onClick = { viewModel.onIntervalSelect(interval.first) },
+                        label = { Text(interval.second) }
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Loading ve Error durumları
+            if (state.isLoading) {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+
+            state.error?.let { error ->
+                Text(
+                    text = error,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyLarge
                 )
-                ExposedDropdownMenu(
-                    expanded = false,
-                    onDismissRequest = { }
-                ) {
-                    TradeViewModel.availableIntervals.forEach { interval ->
-                        DropdownMenuItem(
-                            text = { Text(interval.second) },
-                            onClick = { viewModel.onIntervalSelect(interval.first) }
-                        )
-                    }
+            }
+
+            // Mum Grafiği
+            if (state.candlesticks.isNotEmpty()) {
+                CandlestickCard(candlesticks = state.candlesticks)
+                
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // Son Mum Detayları
+                state.currentCandlestick?.let { candlestick ->
+                    PriceInfoCard(candlestick = candlestick)
                 }
             }
 
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Candlestick grafiği
-            if (state.isLoading) {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(androidx.compose.ui.Alignment.CenterHorizontally)
-                )
-            } else {
-                CandlestickCard(
-                    candlesticks = state.candlesticks,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
         }
     }
 } 

@@ -17,14 +17,18 @@ import java.util.*
 @Composable
 fun CoinPriceHeader(
     coin: String,
+    timeframe: String,
     price: Double,
     volume: Double,
     lastUpdateTime: Long,
     availableCoins: List<String>,
+    availableTimeframes: List<Pair<String, String>>,
     onCoinSelect: (String) -> Unit,
+    onTimeframeSelect: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showCoinSelector by remember { mutableStateOf(false) }
+    var showTimeframeSelector by remember { mutableStateOf(false) }
     val dateFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
 
     Card(
@@ -38,7 +42,7 @@ fun CoinPriceHeader(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Coin seçici ve fiyat
+            // Coin ve Timeframe seçici
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -62,16 +66,33 @@ fun CoinPriceHeader(
                     )
                 }
 
-                // Fiyat
-                Text(
-                    text = "$ ${String.format("%.2f", price)}",
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
+                // Timeframe seçici
+                Row(
+                    modifier = Modifier
+                        .clickable { showTimeframeSelector = true },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = availableTimeframes.find { it.first == timeframe }?.second ?: timeframe,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Icon(
+                        imageVector = Icons.Default.KeyboardArrowDown,
+                        contentDescription = "Zaman dilimi seç"
+                    )
+                }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
+
+            // Fiyat
+            Text(
+                text = "$ ${String.format("%.2f", price)}",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary
+            )
 
             // Hacim ve son güncelleme
             Row(
@@ -123,6 +144,47 @@ fun CoinPriceHeader(
                     ) {
                         Text(
                             text = "$availableCoin/USDT",
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(16.dp)
+                        )
+                    }
+                }
+                Spacer(modifier = Modifier.height(32.dp))
+            }
+        }
+    }
+
+    // Timeframe seçim bottom sheet
+    if (showTimeframeSelector) {
+        ModalBottomSheet(
+            onDismissRequest = { showTimeframeSelector = false }
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+            ) {
+                Text(
+                    text = "Zaman Dilimi Seçin",
+                    style = MaterialTheme.typography.titleLarge,
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
+                availableTimeframes.forEach { (value, label) ->
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable {
+                                onTimeframeSelect(value)
+                                showTimeframeSelector = false
+                            },
+                        color = if (value == timeframe) {
+                            MaterialTheme.colorScheme.primaryContainer
+                        } else {
+                            MaterialTheme.colorScheme.surface
+                        }
+                    ) {
+                        Text(
+                            text = label,
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(16.dp)
                         )
