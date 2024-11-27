@@ -7,6 +7,7 @@ import androidx.navigation.compose.composable
 import com.example.cryptotradebot.presentation.screens.AuthScreen
 import com.example.cryptotradebot.presentation.screens.BacktestScreen
 import com.example.cryptotradebot.presentation.screens.DashboardScreen
+import com.example.cryptotradebot.presentation.screens.StrategyScreen
 import com.example.cryptotradebot.presentation.screens.TradeScreen
 
 @Composable
@@ -21,8 +22,8 @@ fun NavGraph(navController: NavHostController) {
         composable(Screen.Dashboard.route) {
             DashboardScreen(navController)
         }
-        composable(Screen.Trade.route) {
-            TradeScreen(navController)
+        composable(Screen.Strategy.route) {
+            StrategyScreen(navController)
         }
         composable(Screen.Backtest.route) {
             BacktestScreen(navController)
