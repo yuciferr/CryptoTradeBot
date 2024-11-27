@@ -1,9 +1,13 @@
 package com.example.cryptotradebot.presentation.screens
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
@@ -26,7 +30,25 @@ fun StrategyScreen(
     val state = viewModel.state.value
     var showNewStrategyDialog by remember { mutableStateOf(false) }
 
-    Scaffold { paddingValues ->
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text("Strateji Oluştur") },
+                navigationIcon = {
+                    IconButton(onClick = { navController.navigateUp() }) {
+                        Icon(Icons.Default.ArrowBack, "Geri")
+                    }
+                }
+            )
+        },
+        floatingActionButton = {
+            FloatingActionButton(
+                onClick = { showNewStrategyDialog = true }
+            ) {
+                Icon(Icons.Default.CheckCircle, "Strateji Kaydet")
+            }
+        }
+    ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -47,30 +69,20 @@ fun StrategyScreen(
                 modifier = Modifier.padding(vertical = 8.dp)
             )
 
+            // İndikatör başlığı
+            Text(
+                text = "İndikatörler ve Tetikleyiciler",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(vertical = 16.dp)
+            )
+
             // İndikatör editörü
             IndicatorEditor(
                 selectedIndicators = state.selectedIndicators,
                 onAddIndicator = viewModel::onAddIndicator,
                 onRemoveIndicator = viewModel::onRemoveIndicator,
                 onUpdateIndicator = viewModel::onUpdateIndicator,
-                modifier = Modifier.padding(vertical = 8.dp)
-            )
-
-            // Strateji kaydetme butonu
-            Button(
-                onClick = { showNewStrategyDialog = true },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp)
-            ) {
-                Text("Strateji Kaydet")
-            }
-
-            // Kayıtlı stratejiler
-            SavedStrategiesList(
-                strategies = state.savedStrategies,
-                onEditStrategy = viewModel::onEditStrategy,
-                onToggleStrategy = viewModel::onToggleStrategy,
                 modifier = Modifier.weight(1f)
             )
         }
@@ -82,27 +94,30 @@ fun StrategyScreen(
                 onDismissRequest = { showNewStrategyDialog = false },
                 title = { Text("Strateji Adı") },
                 text = {
-                    TextField(
+                    OutlinedTextField(
                         value = strategyName,
                         onValueChange = { strategyName = it },
                         label = { Text("Strateji adını girin") },
-                        singleLine = true
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
                     )
                 },
                 confirmButton = {
-                    TextButton(
+                    Button(
                         onClick = {
                             if (strategyName.isNotBlank()) {
                                 viewModel.onSaveStrategy(strategyName)
                                 showNewStrategyDialog = false
+                                navController.navigateUp()
                             }
-                        }
+                        },
+                        enabled = strategyName.isNotBlank()
                     ) {
                         Text("Kaydet")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showNewStrategyDialog = false }) {
+                    OutlinedButton(onClick = { showNewStrategyDialog = false }) {
                         Text("İptal")
                     }
                 }
