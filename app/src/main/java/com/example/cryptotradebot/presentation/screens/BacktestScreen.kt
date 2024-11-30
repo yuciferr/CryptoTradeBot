@@ -11,6 +11,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.cryptotradebot.domain.model.Strategy
@@ -33,56 +34,57 @@ fun BacktestScreen(
             CryptoBottomNavigation(navController = navController)
         }
     ) { paddingValues ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
+                .padding(paddingValues),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            // Başlık
-            Text(
-                text = "Kayıtlı Stratejiler",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(16.dp)
-            )
+            item {
+                Text(
+                    text = "Kayıtlı Stratejiler",
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(vertical = 16.dp)
+                )
+            }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(state.savedStrategies) { strategy ->
-                    StrategyCard(
-                        strategy = strategy,
-                        onEditClick = {
-                            navController.currentBackStackEntry?.savedStateHandle?.set("selectedCoin", strategy.coin)
-                            navController.currentBackStackEntry?.savedStateHandle?.set("selectedTimeframe", strategy.timeframe)
-                            navController.navigate(Screen.Strategy.route)
-                            viewModel.onEditStrategy(strategy)
-                        },
-                        onToggleClick = { viewModel.onToggleStrategy(strategy) },
-                        onBacktestClick = { /* TODO: Backtest işlemi eklenecek */ }
-                    )
-                }
+            items(state.savedStrategies) { strategy ->
+                BacktestStrategyCard(
+                    strategy = strategy,
+                    onEditClick = {
+                        navController.currentBackStackEntry?.savedStateHandle?.set("selectedCoin", strategy.coin)
+                        navController.currentBackStackEntry?.savedStateHandle?.set("selectedTimeframe", strategy.timeframe)
+                        navController.navigate(Screen.Strategy.route)
+                        viewModel.onEditStrategy(strategy)
+                    },
+                    onToggleClick = { viewModel.onToggleStrategy(strategy) },
+                    onLogClick = { /* TODO: Backtest işlemi eklenecek */ }
+                )
             }
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun StrategyCard(
+private fun BacktestStrategyCard(
     strategy: Strategy,
     onEditClick: () -> Unit,
     onToggleClick: () -> Unit,
-    onBacktestClick: () -> Unit,
+    onLogClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
 
     Card(
         modifier = modifier.fillMaxWidth(),
+        onClick = onLogClick,
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
+            containerColor = if (strategy.isActive) 
+                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
+            else MaterialTheme.colorScheme.surface
         )
     ) {
         Column(
@@ -104,10 +106,6 @@ private fun StrategyCard(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    // Düzenle butonu
-                    IconButton(onClick = onEditClick) {
-                        Icon(Icons.Default.Edit, "Düzenle")
-                    }
                     // Başlat/Durdur butonu
                     IconButton(onClick = onToggleClick) {
                         if (strategy.isActive) {
@@ -120,13 +118,17 @@ private fun StrategyCard(
                             Icon(
                                 Icons.Default.PlayArrow,
                                 contentDescription = "Başlat",
-                                tint = MaterialTheme.colorScheme.primary
+                                tint = Color(0xFF4CAF50) // Yeşil renk
                             )
                         }
                     }
-                    // Backtest butonu
-                    IconButton(onClick = onBacktestClick) {
-                        Icon(Icons.Default.DateRange, "Backtest")
+                    // edit butonu
+                    IconButton(onClick = onEditClick) {
+                        Icon(
+                            Icons.Default.Edit,
+                            contentDescription = "Backtest",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
                     }
                 }
             }
@@ -182,7 +184,7 @@ private fun StrategyCard(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 AssistChip(
-                    onClick = { },
+                    onClick = onToggleClick,
                     label = {
                         Text(if (strategy.isActive) "Aktif" else "Pasif")
                     },
@@ -190,9 +192,13 @@ private fun StrategyCard(
                         Icon(
                             imageVector = if (strategy.isActive) Icons.Default.CheckCircle else Icons.Default.Close,
                             contentDescription = null,
-                            tint = if (strategy.isActive) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                            tint = if (strategy.isActive) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
                         )
-                    }
+                    },
+                    colors = AssistChipDefaults.assistChipColors(
+                        leadingIconContentColor = if (strategy.isActive) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                        labelColor = if (strategy.isActive) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                    )
                 )
                 Text(
                     text = dateFormat.format(Date(strategy.createdAt)),

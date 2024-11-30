@@ -126,6 +126,18 @@ class StrategyViewModel @Inject constructor(
         _state.value = _state.value.copy(savedStrategies = updatedStrategies)
     }
 
+    fun onTakeProfitChange(value: Float?) {
+        _state.value = _state.value.copy(takeProfitPercentage = value)
+    }
+
+    fun onStopLossChange(value: Float?) {
+        _state.value = _state.value.copy(stopLossPercentage = value)
+    }
+
+    fun onTradeAmountChange(value: Float?) {
+        _state.value = _state.value.copy(tradeAmount = value)
+    }
+
     data class StrategyState(
         val selectedCoin: String = "BTC",
         val selectedTimeframe: String = "1h",
@@ -135,7 +147,10 @@ class StrategyViewModel @Inject constructor(
         val selectedIndicators: List<Indicator> = emptyList(),
         val savedStrategies: List<Strategy> = StrategyList.mockStrategies,
         val isLoading: Boolean = false,
-        val error: String? = null
+        val error: String? = null,
+        val takeProfitPercentage: Float? = null,
+        val stopLossPercentage: Float? = null,
+        val tradeAmount: Float? = null
     )
 
     companion object {
