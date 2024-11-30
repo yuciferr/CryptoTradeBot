@@ -22,6 +22,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
+import java.net.URLEncoder
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,8 +82,13 @@ fun BacktestScreen(
                         navController.navigate(Screen.Strategy.route)
                     },
                     onToggleClick = { viewModel.onToggleStrategy(strategy) },
-                    onLogClick = { /* TODO: Backtest işlemi eklenecek */ },
-                    onDeleteClick = { viewModel.onDeleteStrategy(strategy) }
+                    onLogClick = { 
+                        navController.currentBackStackEntry?.savedStateHandle?.set("selectedStrategyId", strategy.id)
+                        navController.currentBackStackEntry?.savedStateHandle?.set("showBacktestOnly", true)
+                        navController.navigate(Screen.Log.route)
+                    },
+                    onDeleteClick = { viewModel.onDeleteStrategy(strategy) },
+                    navController = navController
                 )
             }
         }
@@ -97,6 +103,7 @@ private fun BacktestStrategyCard(
     onToggleClick: () -> Unit,
     onLogClick: () -> Unit,
     onDeleteClick: () -> Unit,
+    navController: NavController,
     modifier: Modifier = Modifier
 ) {
     var showDeleteDialog by remember { mutableStateOf(false) }
@@ -127,7 +134,11 @@ private fun BacktestStrategyCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        onClick = onLogClick,
+        onClick = {
+            navController.navigate(
+                "log_screen/${URLEncoder.encode(strategy.name, "UTF-8")}"
+            )
+        },
         colors = CardDefaults.cardColors(
             containerColor = if (strategy.isActive) 
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)
