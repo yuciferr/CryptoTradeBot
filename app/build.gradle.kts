@@ -75,6 +75,15 @@ dependencies {
     // Coroutines
     implementation(libs.kotlinx.coroutines.core)
     implementation(libs.kotlinx.coroutines.android)
+
+    // Room
+    implementation (libs.room.runtime)
+    implementation (libs.room.ktx)
+    kapt (libs.room.compiler)
+    annotationProcessor (libs.room.compiler)
+
+    // Gson (TypeConverter için gerekli)
+    implementation (libs.gson)
     
     // Testing
     testImplementation(libs.junit)

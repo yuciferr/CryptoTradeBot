@@ -9,15 +9,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.graphics.Color
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.cryptotradebot.domain.model.Strategy
 import com.example.cryptotradebot.presentation.composable.CryptoBottomNavigation
 import com.example.cryptotradebot.presentation.navigation.Screen
-import com.example.cryptotradebot.presentation.viewmodel.StrategyViewModel
+import com.example.cryptotradebot.presentation.viewmodel.BacktestViewModel
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -25,7 +25,7 @@ import java.util.*
 @Composable
 fun BacktestScreen(
     navController: NavController,
-    viewModel: StrategyViewModel = hiltViewModel()
+    viewModel: BacktestViewModel = hiltViewModel()
 ) {
     val state = viewModel.state.value
 
@@ -50,14 +50,24 @@ fun BacktestScreen(
                 )
             }
 
-            items(state.savedStrategies) { strategy ->
+            if (state.isLoading) {
+                item {
+                    Box(
+                        modifier = Modifier.fillMaxWidth(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
+                }
+            }
+
+            items(state.strategies) { strategy ->
                 BacktestStrategyCard(
                     strategy = strategy,
                     onEditClick = {
                         navController.currentBackStackEntry?.savedStateHandle?.set("selectedCoin", strategy.coin)
                         navController.currentBackStackEntry?.savedStateHandle?.set("selectedTimeframe", strategy.timeframe)
                         navController.navigate(Screen.Strategy.route)
-                        viewModel.onEditStrategy(strategy)
                     },
                     onToggleClick = { viewModel.onToggleStrategy(strategy) },
                     onLogClick = { /* TODO: Backtest işlemi eklenecek */ }
@@ -118,7 +128,7 @@ private fun BacktestStrategyCard(
                             Icon(
                                 Icons.Default.PlayArrow,
                                 contentDescription = "Başlat",
-                                tint = Color(0xFF4CAF50) // Yeşil renk
+                                tint = Color(0xFF4CAF50)
                             )
                         }
                     }
@@ -149,6 +159,39 @@ private fun BacktestStrategyCard(
                     text = strategy.timeframe,
                     style = MaterialTheme.typography.bodyMedium
                 )
+            }
+
+            // Trade Settings
+            if (strategy.takeProfitPercentage != null || strategy.stopLossPercentage != null || strategy.tradeAmount != null) {
+                Text(
+                    text = "Trade Ayarları:",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
+                    modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+                )
+                
+                strategy.takeProfitPercentage?.let {
+                    Text(
+                        text = "• Take Profit: %${String.format("%.2f", it)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color(0xFF4CAF50)
+                    )
+                }
+                
+                strategy.stopLossPercentage?.let {
+                    Text(
+                        text = "• Stop Loss: %${String.format("%.2f", it)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                
+                strategy.tradeAmount?.let {
+                    Text(
+                        text = "• İşlem Miktarı: ${String.format("%.2f", it)} USDT",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
 
             // İndikatör listesi
