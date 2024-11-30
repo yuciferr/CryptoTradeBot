@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.cryptotradebot.domain.model.Strategy
 import com.example.cryptotradebot.domain.use_case.strategy.GetAllStrategiesUseCase
 import com.example.cryptotradebot.domain.use_case.strategy.ToggleStrategyUseCase
+import com.example.cryptotradebot.domain.use_case.strategy.DeleteStrategyUseCase
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
@@ -16,7 +17,8 @@ import javax.inject.Inject
 @HiltViewModel
 class BacktestViewModel @Inject constructor(
     private val getAllStrategiesUseCase: GetAllStrategiesUseCase,
-    private val toggleStrategyUseCase: ToggleStrategyUseCase
+    private val toggleStrategyUseCase: ToggleStrategyUseCase,
+    private val deleteStrategyUseCase: DeleteStrategyUseCase
 ) : ViewModel() {
 
     private val _state = mutableStateOf(BacktestState())
@@ -40,6 +42,12 @@ class BacktestViewModel @Inject constructor(
     fun onToggleStrategy(strategy: Strategy) {
         viewModelScope.launch {
             toggleStrategyUseCase(strategy.id, !strategy.isActive)
+        }
+    }
+
+    fun onDeleteStrategy(strategy: Strategy) {
+        viewModelScope.launch {
+            deleteStrategyUseCase(strategy)
         }
     }
 

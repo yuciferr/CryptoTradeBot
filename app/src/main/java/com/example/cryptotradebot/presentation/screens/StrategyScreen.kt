@@ -37,9 +37,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.cryptotradebot.domain.model.Indicator
+import com.example.cryptotradebot.domain.model.Strategy
 import com.example.cryptotradebot.presentation.composable.CoinPriceHeader
 import com.example.cryptotradebot.presentation.composable.IndicatorEditor
 import com.example.cryptotradebot.presentation.viewmodel.StrategyViewModel
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,18 +53,45 @@ fun StrategyScreen(
     timeframe: String,
     viewModel: StrategyViewModel = hiltViewModel()
 ) {
-    LaunchedEffect(coin, timeframe) {
-        viewModel.onCoinSelect(coin)
-        viewModel.onTimeframeSelect(timeframe)
+    val savedStateHandle = navController.previousBackStackEntry?.savedStateHandle
+    val strategyId = savedStateHandle?.get<String>("strategyId")
+    val gson = remember { Gson() }
+    
+    LaunchedEffect(strategyId) {
+        if (strategyId != null) {
+            // Düzenleme modu
+            val indicatorsJson = savedStateHandle.get<String>("strategyIndicators")
+            val indicators = if (!indicatorsJson.isNullOrEmpty()) {
+                val type = object : TypeToken<List<Indicator>>() {}.type
+                gson.fromJson<List<Indicator>>(indicatorsJson, type)
+            } else {
+                emptyList()
+            }
+            
+            viewModel.initEditMode(
+                id = strategyId,
+                name = savedStateHandle.get<String>("strategyName") ?: "",
+                coin = savedStateHandle.get<String>("strategyCoin") ?: "",
+                timeframe = savedStateHandle.get<String>("strategyTimeframe") ?: "",
+                takeProfitPercentage = savedStateHandle.get<Float>("strategyTakeProfit"),
+                stopLossPercentage = savedStateHandle.get<Float>("strategyStopLoss"),
+                tradeAmount = savedStateHandle.get<Float>("strategyTradeAmount"),
+                indicators = indicators
+            )
+        } else {
+            // Yeni strateji modu
+            viewModel.onCoinSelect(coin)
+            viewModel.onTimeframeSelect(timeframe)
+        }
     }
 
     val state = viewModel.state.value
-    var showNewStrategyDialog by remember { mutableStateOf(false) }
+    var showSaveDialog by remember { mutableStateOf(false) }
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { showNewStrategyDialog = true },
+                onClick = { showSaveDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.CheckCircle, "Strateji Kaydet")
@@ -188,22 +219,22 @@ fun StrategyScreen(
             }
         }
 
-        // Yeni strateji isim girme dialog
-        if (showNewStrategyDialog) {
-            var strategyName by remember { mutableStateOf("") }
+        // Kaydetme dialogu
+        if (showSaveDialog) {
+            var strategyName by remember { mutableStateOf(state.strategyName) }
             AlertDialog(
-                onDismissRequest = { showNewStrategyDialog = false },
+                onDismissRequest = { showSaveDialog = false },
                 containerColor = MaterialTheme.colorScheme.surface,
                 title = { 
                     Text(
-                        "Yeni Strateji",
+                        if (strategyId != null) "Stratejiyi Düzenle" else "Yeni Strateji",
                         style = MaterialTheme.typography.headlineSmall
                     )
                 },
                 text = {
                     Column {
                         Text(
-                            "Stratejiniz için bir isim belirleyin",
+                            if (strategyId != null) "Strateji ismini düzenleyin" else "Stratejiniz için bir isim belirleyin",
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
@@ -217,21 +248,23 @@ fun StrategyScreen(
                     }
                 },
                 confirmButton = {
-                    Button(
+                    TextButton(
                         onClick = {
-                            if (strategyName.isNotBlank()) {
+                            if (strategyId != null) {
+                                viewModel.onUpdateStrategy(strategyName)
+                            } else {
                                 viewModel.onSaveStrategy(strategyName)
-                                showNewStrategyDialog = false
-                                navController.navigateUp()
                             }
+                            showSaveDialog = false
+                            navController.popBackStack()
                         },
                         enabled = strategyName.isNotBlank()
                     ) {
-                        Text("Kaydet")
+                        Text(if (strategyId != null) "Güncelle" else "Kaydet")
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showNewStrategyDialog = false }) {
+                    TextButton(onClick = { showSaveDialog = false }) {
                         Text("İptal")
                     }
                 }

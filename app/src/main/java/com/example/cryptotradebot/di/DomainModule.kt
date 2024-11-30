@@ -10,7 +10,7 @@ import javax.inject.Singleton
 
 @Module
 @InstallIn(SingletonComponent::class)
-object UseCaseModule {
+object DomainModule {
 
     @Provides
     @Singleton
@@ -34,5 +34,11 @@ object UseCaseModule {
     @Singleton
     fun provideToggleStrategyUseCase(repository: StrategyRepository): ToggleStrategyUseCase {
         return ToggleStrategyUseCase(repository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDeleteStrategyUseCase(repository: StrategyRepository): DeleteStrategyUseCase {
+        return DeleteStrategyUseCase(repository)
     }
 } 

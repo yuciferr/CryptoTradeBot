@@ -25,7 +25,6 @@ class StrategyViewModel @Inject constructor(
     val state: State<StrategyState> = _state
 
     private var priceUpdateJob: Job? = null
-    private var currentStrategy: Strategy? = null
 
     init {
         startPriceUpdates()
@@ -118,24 +117,44 @@ class StrategyViewModel @Inject constructor(
         }
     }
 
-    fun onEditStrategy(strategy: Strategy) {
-        currentStrategy = strategy
-        _state.value = _state.value.copy(
-            selectedCoin = strategy.coin,
-            selectedTimeframe = strategy.timeframe,
-            selectedIndicators = strategy.indicators,
-            takeProfitPercentage = strategy.takeProfitPercentage,
-            stopLossPercentage = strategy.stopLossPercentage,
-            tradeAmount = strategy.tradeAmount
-        )
+    fun onUpdateStrategy(name: String) {
+        viewModelScope.launch {
+            state.value.strategyId?.let { id ->
+                val strategy = Strategy(
+                    id = id,
+                    name = name,
+                    coin = state.value.selectedCoin,
+                    timeframe = state.value.selectedTimeframe,
+                    indicators = state.value.selectedIndicators,
+                    isActive = false,
+                    createdAt = System.currentTimeMillis(),
+                    takeProfitPercentage = state.value.takeProfitPercentage,
+                    stopLossPercentage = state.value.stopLossPercentage,
+                    tradeAmount = state.value.tradeAmount
+                )
+                
+                saveStrategyUseCase(
+                    strategy = strategy,
+                    takeProfitPercentage = state.value.takeProfitPercentage,
+                    stopLossPercentage = state.value.stopLossPercentage,
+                    tradeAmount = state.value.tradeAmount
+                )
+
+                _state.value = _state.value.copy(
+                    selectedIndicators = emptyList(),
+                    strategyId = null,
+                    strategyName = ""
+                )
+            }
+        }
     }
 
     fun onTakeProfitChange(value: Float?) {
         _state.value = _state.value.copy(takeProfitPercentage = value)
-        currentStrategy?.let { strategy ->
+        state.value.strategyId?.let { id ->
             viewModelScope.launch {
                 updateStrategySettingsUseCase(
-                    id = strategy.id,
+                    id = id,
                     takeProfitPercentage = value,
                     stopLossPercentage = state.value.stopLossPercentage,
                     tradeAmount = state.value.tradeAmount
@@ -146,10 +165,10 @@ class StrategyViewModel @Inject constructor(
 
     fun onStopLossChange(value: Float?) {
         _state.value = _state.value.copy(stopLossPercentage = value)
-        currentStrategy?.let { strategy ->
+        state.value.strategyId?.let { id ->
             viewModelScope.launch {
                 updateStrategySettingsUseCase(
-                    id = strategy.id,
+                    id = id,
                     takeProfitPercentage = state.value.takeProfitPercentage,
                     stopLossPercentage = value,
                     tradeAmount = state.value.tradeAmount
@@ -160,10 +179,10 @@ class StrategyViewModel @Inject constructor(
 
     fun onTradeAmountChange(value: Float?) {
         _state.value = _state.value.copy(tradeAmount = value)
-        currentStrategy?.let { strategy ->
+        state.value.strategyId?.let { id ->
             viewModelScope.launch {
                 updateStrategySettingsUseCase(
-                    id = strategy.id,
+                    id = id,
                     takeProfitPercentage = state.value.takeProfitPercentage,
                     stopLossPercentage = state.value.stopLossPercentage,
                     tradeAmount = value
@@ -181,10 +200,34 @@ class StrategyViewModel @Inject constructor(
         val selectedIndicators: List<Indicator> = emptyList(),
         val isLoading: Boolean = false,
         val error: String? = null,
+        val strategyName: String = "",
+        val strategyId: String? = null,
         val takeProfitPercentage: Float? = null,
         val stopLossPercentage: Float? = null,
         val tradeAmount: Float? = null
     )
+
+    fun initEditMode(
+        id: String,
+        name: String,
+        coin: String,
+        timeframe: String,
+        takeProfitPercentage: Float?,
+        stopLossPercentage: Float?,
+        tradeAmount: Float?,
+        indicators: List<Indicator>
+    ) {
+        _state.value = _state.value.copy(
+            strategyId = id,
+            strategyName = name,
+            selectedCoin = coin,
+            selectedTimeframe = timeframe,
+            takeProfitPercentage = takeProfitPercentage,
+            stopLossPercentage = stopLossPercentage,
+            tradeAmount = tradeAmount,
+            selectedIndicators = indicators
+        )
+    }
 
     companion object {
         val availableCoins = listOf("BTC", "ETH", "SOL", "AVAX", "FET", "RNDR")

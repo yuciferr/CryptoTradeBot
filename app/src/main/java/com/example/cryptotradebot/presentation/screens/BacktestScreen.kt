@@ -20,6 +20,8 @@ import com.example.cryptotradebot.presentation.navigation.Screen
 import com.example.cryptotradebot.presentation.viewmodel.BacktestViewModel
 import java.text.SimpleDateFormat
 import java.util.*
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -28,6 +30,7 @@ fun BacktestScreen(
     viewModel: BacktestViewModel = hiltViewModel()
 ) {
     val state = viewModel.state.value
+    val gson = remember { Gson() }
 
     Scaffold(
         bottomBar = {
@@ -65,12 +68,21 @@ fun BacktestScreen(
                 BacktestStrategyCard(
                     strategy = strategy,
                     onEditClick = {
-                        navController.currentBackStackEntry?.savedStateHandle?.set("selectedCoin", strategy.coin)
-                        navController.currentBackStackEntry?.savedStateHandle?.set("selectedTimeframe", strategy.timeframe)
+                        with(navController.currentBackStackEntry?.savedStateHandle) {
+                            this?.set("strategyId", strategy.id)
+                            this?.set("strategyName", strategy.name)
+                            this?.set("strategyCoin", strategy.coin)
+                            this?.set("strategyTimeframe", strategy.timeframe)
+                            this?.set("strategyTakeProfit", strategy.takeProfitPercentage)
+                            this?.set("strategyStopLoss", strategy.stopLossPercentage)
+                            this?.set("strategyTradeAmount", strategy.tradeAmount)
+                            this?.set("strategyIndicators", gson.toJson(strategy.indicators))
+                        }
                         navController.navigate(Screen.Strategy.route)
                     },
                     onToggleClick = { viewModel.onToggleStrategy(strategy) },
-                    onLogClick = { /* TODO: Backtest işlemi eklenecek */ }
+                    onLogClick = { /* TODO: Backtest işlemi eklenecek */ },
+                    onDeleteClick = { viewModel.onDeleteStrategy(strategy) }
                 )
             }
         }
@@ -84,9 +96,34 @@ private fun BacktestStrategyCard(
     onEditClick: () -> Unit,
     onToggleClick: () -> Unit,
     onLogClick: () -> Unit,
+    onDeleteClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm", Locale.getDefault()) }
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("Stratejiyi Sil") },
+            text = { Text("${strategy.name} stratejisini silmek istediğinizden emin misiniz?") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        onDeleteClick()
+                        showDeleteDialog = false
+                    }
+                ) {
+                    Text("Sil", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("İptal")
+                }
+            }
+        )
+    }
 
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -136,8 +173,16 @@ private fun BacktestStrategyCard(
                     IconButton(onClick = onEditClick) {
                         Icon(
                             Icons.Default.Edit,
-                            contentDescription = "Backtest",
+                            contentDescription = "Düzenle",
                             tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    // silme butonu
+                    IconButton(onClick = { showDeleteDialog = true }) {
+                        Icon(
+                            Icons.Default.Delete,
+                            contentDescription = "Sil",
+                            tint = MaterialTheme.colorScheme.error
                         )
                     }
                 }
