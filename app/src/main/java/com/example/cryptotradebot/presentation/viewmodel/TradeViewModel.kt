@@ -85,13 +85,14 @@ class TradeViewModel @Inject constructor(
     )
 
     companion object {
-        val availableCoins = listOf("BTC", "ETH", "FET", "AVAX", "SOL", "RNDR")
+        val availableCoins = listOf("BTC", "ETH", "FET", "AVAX", "SOL", "RENDER")
         val availableIntervals = listOf(
             Pair("1d", "1 Günlük"),
             Pair("4h", "4 Saatlik"),
             Pair("1h", "1 Saatlik"),
             Pair("15m", "15 Dakikalık"),
-            Pair("5m", "5 Dakikalık")
+            Pair("5m", "5 Dakikalık"),
+            Pair("1m", "1 Dakikalık")
         )
     }
 } 

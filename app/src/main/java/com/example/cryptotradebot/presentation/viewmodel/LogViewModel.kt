@@ -32,8 +32,12 @@ class LogViewModel @Inject constructor(
     val candlesticks = _candlesticks.asStateFlow()
 
     private var fetchJob: Job? = null
-    private var selectedCoin = "BTC"
-    private var selectedInterval = "1h"
+    
+    private var _selectedCoin = MutableStateFlow("BTC")
+    val selectedCoin = _selectedCoin.asStateFlow()
+    
+    private var _selectedInterval = MutableStateFlow("1h")
+    val selectedInterval = _selectedInterval.asStateFlow()
 
     init {
         savedStateHandle.get<String>("selectedStrategyId")?.let { strategyId ->
@@ -52,8 +56,8 @@ class LogViewModel @Inject constructor(
             _state.value = _state.value.copy(isLoading = true)
             
             when (val result = getCandlesticksUseCase(
-                symbol = "${selectedCoin}USDT",
-                interval = selectedInterval,
+                symbol = "${_selectedCoin.value}USDT",
+                interval = _selectedInterval.value,
                 limit = 100
             )) {
                 is Resource.Success -> {
@@ -79,12 +83,12 @@ class LogViewModel @Inject constructor(
     }
 
     fun onCoinSelect(coin: String) {
-        selectedCoin = coin
+        _selectedCoin.value = coin
         getCandlesticks()
     }
 
     fun onIntervalSelect(interval: String) {
-        selectedInterval = interval
+        _selectedInterval.value = interval
         getCandlesticks()
     }
 

@@ -83,9 +83,14 @@ fun BacktestScreen(
                     },
                     onToggleClick = { viewModel.onToggleStrategy(strategy) },
                     onLogClick = { 
-                        navController.currentBackStackEntry?.savedStateHandle?.set("selectedStrategyId", strategy.id)
-                        navController.currentBackStackEntry?.savedStateHandle?.set("showBacktestOnly", true)
-                        navController.navigate(Screen.Log.route)
+                        with(navController.currentBackStackEntry?.savedStateHandle) {
+                            this?.set("selectedStrategyId", strategy.id)
+                            this?.set("showBacktestOnly", true)
+                            this?.set("strategyCoin", strategy.coin)
+                            this?.set("strategyTimeframe", strategy.timeframe)
+                            this?.set("strategyName", strategy.name)
+                        }
+                        navController.navigate("log_screen/${URLEncoder.encode(strategy.name, "UTF-8")}")
                     },
                     onDeleteClick = { viewModel.onDeleteStrategy(strategy) },
                     navController = navController
@@ -134,11 +139,7 @@ private fun BacktestStrategyCard(
 
     Card(
         modifier = modifier.fillMaxWidth(),
-        onClick = {
-            navController.navigate(
-                "log_screen/${URLEncoder.encode(strategy.name, "UTF-8")}"
-            )
-        },
+        onClick = onLogClick,
         colors = CardDefaults.cardColors(
             containerColor = if (strategy.isActive) 
                 MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.2f)

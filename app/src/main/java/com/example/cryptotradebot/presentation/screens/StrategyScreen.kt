@@ -41,6 +41,7 @@ import com.example.cryptotradebot.domain.model.Indicator
 import com.example.cryptotradebot.domain.model.Strategy
 import com.example.cryptotradebot.presentation.composable.CoinPriceHeader
 import com.example.cryptotradebot.presentation.composable.IndicatorEditor
+import com.example.cryptotradebot.presentation.navigation.Screen
 import com.example.cryptotradebot.presentation.viewmodel.StrategyViewModel
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
@@ -256,7 +257,9 @@ fun StrategyScreen(
                                 viewModel.onSaveStrategy(strategyName)
                             }
                             showSaveDialog = false
-                            navController.popBackStack()
+                            navController.navigate(Screen.Backtest.route) {
+                                popUpTo(Screen.Backtest.route) { inclusive = true }
+                            }
                         },
                         enabled = strategyName.isNotBlank()
                     ) {

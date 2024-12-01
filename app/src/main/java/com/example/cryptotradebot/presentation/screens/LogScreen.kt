@@ -32,10 +32,29 @@ fun LogScreen(
 ) {
     val state = viewModel.state.value
     val candlesticks = viewModel.candlesticks.collectAsState().value
+    val selectedCoin = viewModel.selectedCoin.collectAsState().value
+    val selectedInterval = viewModel.selectedInterval.collectAsState().value
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()) }
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Live", "Backtest")
     
+    // Strateji bilgilerini al
+    LaunchedEffect(key1 = Unit) {
+        navController.currentBackStackEntry?.savedStateHandle?.let { handle ->
+            handle.get<String>("strategyCoin")?.let { coin ->
+                viewModel.onCoinSelect(coin)
+            }
+            handle.get<String>("strategyTimeframe")?.let { timeframe ->
+                viewModel.onIntervalSelect(timeframe)
+            }
+            handle.get<Boolean>("showBacktestOnly")?.let { showBacktest ->
+                if (showBacktest) {
+                    selectedTabIndex = 1
+                }
+            }
+        }
+    }
+
     // Her sekme için çalışma durumu
     var isLiveRunning by remember { mutableStateOf(false) }
     var isBacktestRunning by remember { mutableStateOf(false) }
@@ -77,8 +96,8 @@ fun LogScreen(
             // Ana içerik - LazyColumn
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 // 1. Grafik
                 item {
@@ -96,7 +115,7 @@ fun LogScreen(
                                 .padding(8.dp)
                         ) {
                             Text(
-                                text = "BTC/USDT - 1H",
+                                text = "$selectedCoin/USDT - $selectedInterval",
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
                             )

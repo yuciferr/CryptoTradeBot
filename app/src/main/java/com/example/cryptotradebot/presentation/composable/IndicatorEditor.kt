@@ -92,11 +92,18 @@ fun IndicatorEditor(
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Text(
-                            text = indicator.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
+                        Column {
+                            Text(
+                                text = indicator.name,
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold
+                            )
+                            Text(
+                                text = indicator.category,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         Row {
                             IconButton(onClick = { editingIndicator = index to indicator }) {
                                 Icon(Icons.Default.Edit, "Düzenle")
@@ -117,34 +124,22 @@ fun IndicatorEditor(
                         ) {
                             Text(
                                 text = param.name,
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                style = MaterialTheme.typography.bodyMedium
                             )
                             Text(
-                                text = String.format("%.2f", param.value),
+                                text = param.value.toString(),
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
                     }
 
                     // Tetikleme koşulu
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = "Tetikleme",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                        )
-                        Text(
-                            text = formatTriggerCondition(indicator.triggerCondition),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
+                    Text(
+                        text = "Signal: ${formatTriggerCondition(indicator.triggerCondition)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.secondary,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
                 }
             }
         }
@@ -152,35 +147,46 @@ fun IndicatorEditor(
 
     // İndikatör seçim bottom sheet
     if (showIndicatorSelector) {
-        ModalBottomSheet(
-            onDismissRequest = { showIndicatorSelector = false }
-        ) {
+        ModalBottomSheet(onDismissRequest = { showIndicatorSelector = false }) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "İndikatör Seçin",
+                    text = "Select Indicator",
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
-                IndicatorList.availableIndicators.forEach { indicator ->
-                    Surface(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable {
-                                onAddIndicator(indicator)
-                                showIndicatorSelector = false
-                            },
-                        color = MaterialTheme.colorScheme.surface
-                    ) {
-                        Text(
-                            text = indicator.name,
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(16.dp)
-                        )
-                    }
+
+                // Kategorilere göre gruplandırılmış indikatörler
+                listOf("Trend", "Momentum", "Volume", "Volatility").forEach { category ->
+                    Text(
+                        text = category,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    
+                    IndicatorList.availableIndicators
+                        .filter { it.category == category }
+                        .forEach { indicator ->
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        onAddIndicator(indicator)
+                                        showIndicatorSelector = false
+                                    },
+                                color = MaterialTheme.colorScheme.surface
+                            ) {
+                                Text(
+                                    text = indicator.name,
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    modifier = Modifier.padding(16.dp)
+                                )
+                            }
+                        }
                 }
                 Spacer(modifier = Modifier.height(32.dp))
             }
@@ -231,54 +237,184 @@ private fun IndicatorParameterEditor(
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
                 )
+                param.description?.let { desc ->
+                    Text(
+                        text = desc,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
+                    )
+                }
                 Slider(
                     value = param.value.toFloat(),
                     onValueChange = { newValue ->
+                        // Yeni değeri yuvarla
+                        val roundedValue = if (param.step < 1) {
+                            (newValue * 10).toInt() / 10.0
+                        } else {
+                            newValue.toInt().toDouble()
+                        }
                         parameters = parameters.toMutableList().apply {
-                            this[index] = param.copy(value = newValue.toDouble())
+                            this[index] = param.copy(value = roundedValue)
                         }
                     },
                     valueRange = param.minValue.toFloat()..param.maxValue.toFloat(),
                     steps = ((param.maxValue - param.minValue) / param.step).toInt() - 1
                 )
                 Text(
-                    text = String.format("%.2f", param.value),
+                    text = if (param.step < 1) {
+                        String.format("%.1f", param.value)
+                    } else {
+                        String.format("%.0f", param.value)
+                    },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
 
-            // Tetikleme koşulu
-            Text(
-                text = "Tetikleme Koşulu",
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
-            )
-            
-            var expanded by remember { mutableStateOf(false) }
-            ExposedDropdownMenuBox(
-                expanded = expanded,
-                onExpandedChange = { expanded = it }
-            ) {
-                TextField(
-                    value = triggerCondition.type.name,
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor()
+            // Sinyal değerleri düzenleme bölümü (RSI, CCI gibi indikatörler için)
+            if (indicator.hasEditableSignalValues) {
+                Text(
+                    text = "Sinyal Değerleri",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                 )
-                ExposedDropdownMenu(
-                    expanded = expanded,
-                    onDismissRequest = { expanded = false }
-                ) {
-                    TriggerType.values().forEach { type ->
-                        DropdownMenuItem(
-                            text = { Text(type.name) },
-                            onClick = {
-                                triggerCondition = triggerCondition.copy(type = type)
-                                expanded = false
-                            }
+
+                when (indicator.name) {
+                    "RSI" -> {
+                        // RSI için özel sinyal değerleri
+                        var overbought by remember { mutableStateOf(triggerCondition.compareValue ?: 70.0) }
+                        var oversold by remember { mutableStateOf(triggerCondition.value) }
+
+                        Text("Aşırı Alım (Overbought)")
+                        Slider(
+                            value = overbought.toFloat(),
+                            onValueChange = { 
+                                overbought = it.toInt().toDouble()
+                            },
+                            valueRange = 50f..100f,
+                            steps = 50
                         )
+                        Text(String.format("%.0f", overbought))
+
+                        Text("Aşırı Satım (Oversold)")
+                        Slider(
+                            value = oversold.toFloat(),
+                            onValueChange = { 
+                                oversold = it.toInt().toDouble()
+                            },
+                            valueRange = 0f..50f,
+                            steps = 50
+                        )
+                        Text(String.format("%.0f", oversold))
+
+                        // RSI sinyal değerlerini güncelle
+                        triggerCondition = triggerCondition.copy(
+                            value = oversold,
+                            compareValue = overbought
+                        )
+                    }
+                    "CCI" -> {
+                        // CCI için özel sinyal değerleri
+                        var upperLevel by remember { mutableStateOf(triggerCondition.compareValue ?: 100.0) }
+                        var lowerLevel by remember { mutableStateOf(triggerCondition.value) }
+
+                        Text("Üst Seviye")
+                        Slider(
+                            value = upperLevel.toFloat(),
+                            onValueChange = { 
+                                upperLevel = it.toInt().toDouble()
+                            },
+                            valueRange = 0f..200f,
+                            steps = 200
+                        )
+                        Text(String.format("%.0f", upperLevel))
+
+                        Text("Alt Seviye")
+                        Slider(
+                            value = lowerLevel.toFloat(),
+                            onValueChange = { 
+                                lowerLevel = it.toInt().toDouble()
+                            },
+                            valueRange = -200f..0f,
+                            steps = 200
+                        )
+                        Text(String.format("%.0f", lowerLevel))
+
+                        // CCI sinyal değerlerini güncelle
+                        triggerCondition = triggerCondition.copy(
+                            value = lowerLevel,
+                            compareValue = upperLevel
+                        )
+                    }
+                    "Stochastic" -> {
+                        // Stochastic için özel sinyal değerleri
+                        var upperLevel by remember { mutableStateOf(triggerCondition.compareValue ?: 80.0) }
+                        var lowerLevel by remember { mutableStateOf(triggerCondition.value) }
+
+                        Text("Üst Seviye")
+                        Slider(
+                            value = upperLevel.toFloat(),
+                            onValueChange = { 
+                                upperLevel = it.toInt().toDouble()
+                            },
+                            valueRange = 50f..100f,
+                            steps = 50
+                        )
+                        Text(String.format("%.0f", upperLevel))
+
+                        Text("Alt Seviye")
+                        Slider(
+                            value = lowerLevel.toFloat(),
+                            onValueChange = { 
+                                lowerLevel = it.toInt().toDouble()
+                            },
+                            valueRange = 0f..50f,
+                            steps = 50
+                        )
+                        Text(String.format("%.0f", lowerLevel))
+
+                        // Stochastic sinyal değerlerini güncelle
+                        triggerCondition = triggerCondition.copy(
+                            value = lowerLevel,
+                            compareValue = upperLevel
+                        )
+                    }
+                }
+            }
+
+            // Tetikleme koşulu seçimi
+            if (!indicator.hasEditableSignalValues) {
+                Text(
+                    text = "Tetikleme Koşulu",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                )
+                
+                var expanded by remember { mutableStateOf(false) }
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = it }
+                ) {
+                    TextField(
+                        value = triggerCondition.type.name,
+                        onValueChange = {},
+                        readOnly = true,
+                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                        modifier = Modifier.menuAnchor()
+                    )
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        TriggerType.values().forEach { type ->
+                            DropdownMenuItem(
+                                text = { Text(type.name) },
+                                onClick = {
+                                    triggerCondition = triggerCondition.copy(type = type)
+                                    expanded = false
+                                }
+                            )
+                        }
                     }
                 }
             }
