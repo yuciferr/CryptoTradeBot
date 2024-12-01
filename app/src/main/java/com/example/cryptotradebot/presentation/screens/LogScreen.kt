@@ -14,9 +14,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.cryptotradebot.domain.model.Candlestick
 import com.example.cryptotradebot.domain.model.TradeLog
 import com.example.cryptotradebot.domain.model.TradeType
 import com.example.cryptotradebot.presentation.composable.CryptoBottomNavigation
+import com.example.cryptotradebot.presentation.composable.CandlestickChart
 import com.example.cryptotradebot.presentation.viewmodel.LogViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -29,6 +31,7 @@ fun LogScreen(
     strategyTitle: String
 ) {
     val state = viewModel.state.value
+    val candlesticks = viewModel.candlesticks.collectAsState().value
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()) }
     var selectedTabIndex by remember { mutableStateOf(0) }
     val tabs = listOf("Live", "Backtest")
@@ -57,7 +60,7 @@ fun LogScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
-            // Tab Row ekleniyor
+            // Tab Row
             TabRow(
                 selectedTabIndex = selectedTabIndex,
                 containerColor = Color.Transparent
@@ -71,131 +74,176 @@ fun LogScreen(
                 }
             }
 
-            // Başlat/Durdur Butonu
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-            ) {
-                Button(
-                    onClick = {
-                        if (selectedTabIndex == 0) {
-                            isLiveRunning = !isLiveRunning
-                        } else {
-                            isBacktestRunning = !isBacktestRunning
-                        }
-                    },
-                    colors = ButtonDefaults.buttonColors(
-                        containerColor = if ((selectedTabIndex == 0 && isLiveRunning) || 
-                            (selectedTabIndex == 1 && isBacktestRunning))
-                            MaterialTheme.colorScheme.error
-                        else
-                            MaterialTheme.colorScheme.primary
-                    ),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Icon(
-                        if ((selectedTabIndex == 0 && isLiveRunning) || 
-                            (selectedTabIndex == 1 && isBacktestRunning))
-                            Icons.Default.Clear
-                        else
-                            Icons.Default.PlayArrow,
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text(
-                        if ((selectedTabIndex == 0 && isLiveRunning) || 
-                            (selectedTabIndex == 1 && isBacktestRunning))
-                            "Durdur"
-                        else
-                            "Başlat"
-                    )
-                }
-            }
-
-            // Strateji özeti kartı
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = "Toplam İşlem",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                text = "24",
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "Ortalama Kâr",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                text = "+2.45%",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color(0xFF4CAF50)
-                            )
-                        }
-                    }
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(
-                                text = "Başarılı İşlem",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                text = "18",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color(0xFF4CAF50)
-                            )
-                        }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = "Başarı Oranı",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                            )
-                            Text(
-                                text = "75.0%",
-                                style = MaterialTheme.typography.titleMedium,
-                                color = Color(0xFF4CAF50)
-                            )
-                        }
-                    }
-                }
-            }
-
-            // İşlem listesi
+            // Ana içerik - LazyColumn
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Seçili sekmeye göre filtrelenmiş işlemler
+                // 1. Grafik
+                item {
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(450.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surface
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(8.dp)
+                        ) {
+                            Text(
+                                text = "BTC/USDT - 1H",
+                                style = MaterialTheme.typography.titleMedium,
+                                modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
+                            )
+                            if (state.isLoading) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            } else if (state.error != null) {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = state.error,
+                                        color = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            } else {
+                                CandlestickChart(
+                                    candlesticks = candlesticks,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .weight(1f)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 2. Başlat/Durdur Butonu
+                item {
+                    Button(
+                        onClick = {
+                            if (selectedTabIndex == 0) {
+                                isLiveRunning = !isLiveRunning
+                            } else {
+                                isBacktestRunning = !isBacktestRunning
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(
+                            containerColor = if ((selectedTabIndex == 0 && isLiveRunning) || 
+                                (selectedTabIndex == 1 && isBacktestRunning))
+                                MaterialTheme.colorScheme.error
+                            else
+                                MaterialTheme.colorScheme.primary
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            if ((selectedTabIndex == 0 && isLiveRunning) || 
+                                (selectedTabIndex == 1 && isBacktestRunning))
+                                Icons.Default.Clear
+                            else
+                                Icons.Default.PlayArrow,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            if ((selectedTabIndex == 0 && isLiveRunning) || 
+                                (selectedTabIndex == 1 && isBacktestRunning))
+                                "Durdur"
+                            else
+                                "Başlat"
+                        )
+                    }
+                }
+
+                // 3. Strateji Özeti Kartı
+                item {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
+                        )
+                    ) {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Toplam İşlem",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                    Text(
+                                        text = "24",
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "Ortalama Kâr",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                    Text(
+                                        text = "+2.45%",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Column {
+                                    Text(
+                                        text = "Başarılı İşlem",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                    Text(
+                                        text = "18",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                }
+                                Column(horizontalAlignment = Alignment.End) {
+                                    Text(
+                                        text = "Başarı Oranı",
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                                    )
+                                    Text(
+                                        text = "75.0%",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = Color(0xFF4CAF50)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 4. İşlem Logları
                 val filteredLogs = mockTradeLogs.filter { log ->
                     when (selectedTabIndex) {
                         0 -> !log.isBacktest // Live işlemler
@@ -284,7 +332,7 @@ private fun TradeLogCard(
                         )
                     )
                 }
-                
+
                 AssistChip(
                     onClick = { },
                     label = { Text(if (log.type == TradeType.BUY) "ALIŞ" else "SATIŞ") },
@@ -352,11 +400,11 @@ private fun TradeLogCard(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                
+
                 log.profit?.let { profit ->
                     AssistChip(
                         onClick = { },
-                        label = { 
+                        label = {
                             Text(
                                 text = String.format("%+.2f%%", profit),
                                 color = if (profit >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
@@ -375,4 +423,4 @@ private fun TradeLogCard(
             )
         }
     }
-} 
+}

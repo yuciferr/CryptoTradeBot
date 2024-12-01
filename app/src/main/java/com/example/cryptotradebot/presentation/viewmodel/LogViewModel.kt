@@ -7,9 +7,13 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cryptotradebot.domain.model.TradeLog
 import com.example.cryptotradebot.domain.model.TradeType
+import com.example.cryptotradebot.domain.model.Candlestick
+import com.example.cryptotradebot.domain.use_case.GetCandlesticksUseCase
+import com.example.cryptotradebot.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
@@ -17,11 +21,19 @@ import kotlin.random.Random
 
 @HiltViewModel
 class LogViewModel @Inject constructor(
+    private val getCandlesticksUseCase: GetCandlesticksUseCase,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _state = mutableStateOf(LogState())
     val state: State<LogState> = _state
+
+    private val _candlesticks = MutableStateFlow<List<Candlestick>>(emptyList())
+    val candlesticks = _candlesticks.asStateFlow()
+
+    private var fetchJob: Job? = null
+    private var selectedCoin = "BTC"
+    private var selectedInterval = "1h"
 
     init {
         savedStateHandle.get<String>("selectedStrategyId")?.let { strategyId ->
@@ -31,6 +43,53 @@ class LogViewModel @Inject constructor(
             _state.value = _state.value.copy(showBacktestOnly = showBacktest)
         }
         loadMockData()
+        getCandlesticks()
+    }
+
+    private fun getCandlesticks() {
+        fetchJob?.cancel()
+        fetchJob = viewModelScope.launch {
+            _state.value = _state.value.copy(isLoading = true)
+            
+            when (val result = getCandlesticksUseCase(
+                symbol = "${selectedCoin}USDT",
+                interval = selectedInterval,
+                limit = 100
+            )) {
+                is Resource.Success -> {
+                    result.data?.let { candlesticks ->
+                        _candlesticks.value = candlesticks
+                        _state.value = _state.value.copy(
+                            isLoading = false,
+                            error = null
+                        )
+                    }
+                }
+                is Resource.Error -> {
+                    _state.value = _state.value.copy(
+                        isLoading = false,
+                        error = result.message ?: "Beklenmeyen bir hata oluştu"
+                    )
+                }
+                is Resource.Loading -> {
+                    _state.value = _state.value.copy(isLoading = true)
+                }
+            }
+        }
+    }
+
+    fun onCoinSelect(coin: String) {
+        selectedCoin = coin
+        getCandlesticks()
+    }
+
+    fun onIntervalSelect(interval: String) {
+        selectedInterval = interval
+        getCandlesticks()
+    }
+
+    fun refreshData() {
+        getCandlesticks()
     }
 
     private fun loadMockData() {
