@@ -1,6 +1,11 @@
 package com.example.cryptotradebot.di
 
+import com.example.cryptotradebot.data.remote.BacktestApi
 import com.example.cryptotradebot.data.remote.BinanceApi
+import com.example.cryptotradebot.data.remote.LiveTradeApi
+import com.example.cryptotradebot.data.remote.TradeWebSocketService
+import com.example.cryptotradebot.data.repository.TradeRepositoryImpl
+import com.example.cryptotradebot.domain.repository.TradeRepository
 import com.example.cryptotradebot.utils.Constants
 import dagger.Module
 import dagger.Provides
@@ -10,6 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import javax.inject.Named
 import javax.inject.Singleton
 
 @Module
@@ -26,7 +32,8 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideOkHttpClient(loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
+    @Named("binanceClient")
+    fun provideBinanceHttpClient(loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor { chain ->
                 val original = chain.request()
@@ -41,12 +48,60 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideBinanceApi(okHttpClient: OkHttpClient): BinanceApi {
+    @Named("tradeClient")
+    fun provideTradeHttpClient(loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
+        return OkHttpClient.Builder()
+            .addInterceptor(loggingInterceptor)
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    @Named("binanceRetrofit")
+    fun provideBinanceRetrofit(@Named("binanceClient") okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
             .baseUrl(Constants.BASE_URL)
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
-            .create(BinanceApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    @Named("tradeRetrofit")
+    fun provideTradeRetrofit(@Named("tradeClient") okHttpClient: OkHttpClient): Retrofit {
+        return Retrofit.Builder()
+            .baseUrl("http://localhost:8000")
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+    }
+
+    @Provides
+    @Singleton
+    fun provideBinanceApi(@Named("binanceRetrofit") retrofit: Retrofit): BinanceApi {
+        return retrofit.create(BinanceApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideBacktestApi(@Named("tradeRetrofit") retrofit: Retrofit): BacktestApi {
+        return retrofit.create(BacktestApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideLiveTradeApi(@Named("tradeRetrofit") retrofit: Retrofit): LiveTradeApi {
+        return retrofit.create(LiveTradeApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTradeRepository(
+        backtestApi: BacktestApi,
+        liveTradeApi: LiveTradeApi,
+        webSocketService: TradeWebSocketService
+    ): TradeRepository {
+        return TradeRepositoryImpl(backtestApi, liveTradeApi, webSocketService)
     }
 } 
