@@ -31,18 +31,19 @@ fun CandlestickChart(
     modifier: Modifier = Modifier
 ) {
     var scale by remember { mutableStateOf(1f) }
-    var offset by remember { mutableStateOf(0f) }
-    var selectedCandlestick by remember { mutableStateOf<Candlestick?>(null) }
-    var touchPosition by remember { mutableStateOf<Offset?>(null) }
+    var offset by remember { 
+        mutableStateOf(-(candlesticks.size * 20f))
+    }
     
     val textMeasurer = rememberTextMeasurer()
     val dateFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
+    val dayFormat = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
     val chartBackground = Color(0xFF1E1E1E)
 
     Box(
         modifier = modifier
             .background(chartBackground)
-            .padding(16.dp),
+            .padding(start = 8.dp, end = 0.dp, bottom = 10.dp, top=25.dp),
         contentAlignment = Alignment.Center
     ) {
         Canvas(
@@ -53,31 +54,18 @@ fun CandlestickChart(
                     detectTransformGestures { _, pan, gestureZoom, _ ->
                         scale = (scale * gestureZoom).coerceIn(0.5f, 3f)
                         offset = (offset + pan.x).coerceIn(
-                            -size.width.toFloat(),
-                            size.width.toFloat()
+                            -(candlesticks.size * 20f),
+                            0f
                         )
                     }
-                }
-                .pointerInput(Unit) {
-                    detectTapGestures(
-                        onPress = { position ->
-                            touchPosition = position
-                            val candleIndex = getCandleIndexAtPosition(position, scale, offset)
-                            selectedCandlestick = candlesticks.getOrNull(candleIndex)
-                        },
-                        onTap = { position ->
-                            val candleIndex = getCandleIndexAtPosition(position, scale, offset)
-                            selectedCandlestick = candlesticks.getOrNull(candleIndex)
-                        }
-                    )
                 }
         ) {
             if (candlesticks.isEmpty()) return@Canvas
 
-            val visibleCount = 20
-            val totalWidth = size.width
-            val candleWidth = (totalWidth / visibleCount) * 0.8f
-            val spacing = (totalWidth / visibleCount) * 0.2f
+            val visibleCount = 30
+            val totalWidth = size.width - 60.dp.toPx()
+            val candleWidth = (totalWidth / visibleCount) * 0.6f
+            val spacing = (totalWidth / visibleCount) * 0.4f
 
             val startIndex = ((-offset / (candleWidth + spacing)) * scale).toInt()
                 .coerceIn(0, (candlesticks.size - visibleCount).coerceAtLeast(0))
@@ -88,9 +76,34 @@ fun CandlestickChart(
             val maxPrice = prices.maxOrNull() ?: 0f
             val minPrice = prices.minOrNull() ?: 0f
             val priceRange = (maxPrice - minPrice).coerceAtLeast(0.0001f)
-            val chartHeight = size.height
+            val chartHeight = size.height - 25.dp.toPx()
 
-            // Mumları çiz
+            val priceSteps = 5
+            for (i in 0..priceSteps) {
+                val price = minPrice + (priceRange * i / priceSteps)
+                val y = chartHeight - (((price - minPrice) / priceRange) * chartHeight)
+                
+                val priceText = String.format("%.2f", price)
+                val textWidth = textMeasurer.measure(priceText).size.width
+                
+                drawText(
+                    textMeasurer = textMeasurer,
+                    text = priceText,
+                    style = TextStyle(
+                        fontSize = 11.sp,
+                        color = Color.White.copy(alpha = 0.7f)
+                    ),
+                    topLeft = Offset(size.width - textWidth - 2.dp.toPx(), y - 6.dp.toPx())
+                )
+                
+                drawLine(
+                    color = Color.White.copy(alpha = 0.1f),
+                    start = Offset(0f, y),
+                    end = Offset(size.width - 70.dp.toPx(), y),
+                    strokeWidth = 1f
+                )
+            }
+
             visibleCandlesticks.forEachIndexed { index, candlestick ->
                 val x = index * (candleWidth + spacing)
                 if (x < -candleWidth || x > size.width + candleWidth) return@forEachIndexed
@@ -102,7 +115,6 @@ fun CandlestickChart(
 
                 val candleColor = if (close >= open) Color(0xFF00C853) else Color(0xFFD50000)
 
-                // Fitil
                 val topY = chartHeight - (((high - minPrice) / priceRange) * chartHeight)
                 val bottomY = chartHeight - (((low - minPrice) / priceRange) * chartHeight)
                 drawLine(
@@ -113,7 +125,6 @@ fun CandlestickChart(
                     cap = StrokeCap.Round
                 )
 
-                // Gövde
                 val openY = chartHeight - (((open - minPrice) / priceRange) * chartHeight)
                 val closeY = chartHeight - (((close - minPrice) / priceRange) * chartHeight)
                 val top = minOf(openY, closeY)
@@ -127,90 +138,45 @@ fun CandlestickChart(
                 )
             }
 
-            // Tooltip çizimi
-            touchPosition?.let { position ->
-                if (position.x >= 0 && position.x <= size.width && 
-                    position.y >= 0 && position.y <= size.height) {
+            var lastDay = -1
+            val timeInterval = 7
+            val timeSteps = visibleCount / timeInterval
+            
+            for (i in 0..timeSteps) {
+                val candleIndex = startIndex + (i * timeInterval)
+                if (candleIndex < candlesticks.size) {
+                    val x = (i * timeInterval) * (candleWidth + spacing)
+                    val date = Date(candlesticks[candleIndex].openTime)
+                    val calendar = Calendar.getInstance().apply { time = date }
+                    val currentDay = calendar.get(Calendar.DAY_OF_MONTH)
                     
-                    val price = getPriceAtPosition(position.y, minPrice, maxPrice, chartHeight)
-                    val tooltipWidth = 120f
-                    val tooltipHeight = 40f
+                    val timeText = if (currentDay != lastDay) {
+                        lastDay = currentDay
+                        SimpleDateFormat("dd/MM", Locale.getDefault()).format(date)
+                    } else {
+                        SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
+                    }
                     
-                    val tooltipX = (position.x + tooltipWidth).coerceAtMost(size.width - tooltipWidth)
-                    val tooltipY = position.y.coerceIn(tooltipHeight, size.height - tooltipHeight)
-                    
-                    // Tooltip background
-                    drawRect(
-                        color = Color(0xFF2D2D2D).copy(alpha = 0.95f),
-                        topLeft = Offset(tooltipX - tooltipWidth, tooltipY - tooltipHeight/2),
-                        size = Size(tooltipWidth, tooltipHeight)
-                    )
-                    
-                    val priceText = String.format("%.2f", price)
-                    val textWidth = textMeasurer.measure(priceText).size.width
+                    val textWidth = textMeasurer.measure(timeText).size.width
                     
                     drawText(
                         textMeasurer = textMeasurer,
-                        text = priceText,
+                        text = timeText,
                         style = TextStyle(
-                            fontSize = 16.sp,
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold,
-                            textAlign = TextAlign.Center
+                            fontSize = 11.sp,
+                            color = Color.White.copy(alpha = 0.7f)
                         ),
-                        topLeft = Offset(
-                            tooltipX - tooltipWidth/2 - textWidth/2,
-                            tooltipY - 12
-                        )
+                        topLeft = Offset(x, size.height - 15.dp.toPx())
                     )
-                }
-            }
-        }
-
-        // Seçili mum için tooltip
-        selectedCandlestick?.let { candlestick ->
-            Surface(
-                modifier = Modifier.padding(8.dp),
-                color = Color(0xFF2D2D2D).copy(alpha = 0.95f),
-                shape = MaterialTheme.shapes.medium,
-                tonalElevation = 8.dp
-            ) {
-                Column(
-                    modifier = Modifier.padding(16.dp)
-                ) {
-                    Text(
-                        text = dateFormat.format(Date(candlestick.openTime)),
-                        style = MaterialTheme.typography.titleMedium.copy(
-                            color = Color.White,
-                            fontWeight = FontWeight.Bold
-                        )
-                    )
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = "Fiyat: ${candlestick.close}",
-                        style = MaterialTheme.typography.bodyLarge.copy(
-                            color = if (candlestick.close.toFloat() >= candlestick.open.toFloat())
-                                Color(0xFF00C853) else Color(0xFFD50000),
-                            fontWeight = FontWeight.Medium
-                        )
-                    )
-                    Text(
-                        text = "Hacim: ${candlestick.volume}",
-                        style = MaterialTheme.typography.bodyMedium.copy(
-                            color = Color.White.copy(alpha = 0.8f)
-                        )
+                    
+                    drawLine(
+                        color = Color.White.copy(alpha = 0.1f),
+                        start = Offset(x, 0f),
+                        end = Offset(x, chartHeight),
+                        strokeWidth = 1f
                     )
                 }
             }
         }
     }
-}
-
-private fun getCandleIndexAtPosition(position: Offset, scale: Float, offset: Float): Int {
-    return ((position.x + offset) / (scale * 10)).toInt()
-}
-
-private fun getPriceAtPosition(y: Float, minPrice: Float, maxPrice: Float, chartHeight: Float): Float {
-    val priceRange = maxPrice - minPrice
-    return maxPrice - (y / chartHeight) * priceRange
 } 

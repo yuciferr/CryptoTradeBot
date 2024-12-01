@@ -30,6 +30,12 @@ fun LogScreen(
 ) {
     val state = viewModel.state.value
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()) }
+    var selectedTabIndex by remember { mutableStateOf(0) }
+    val tabs = listOf("Live", "Backtest")
+    
+    // Her sekme için çalışma durumu
+    var isLiveRunning by remember { mutableStateOf(false) }
+    var isBacktestRunning by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -51,6 +57,63 @@ fun LogScreen(
                 .fillMaxSize()
                 .padding(paddingValues)
         ) {
+            // Tab Row ekleniyor
+            TabRow(
+                selectedTabIndex = selectedTabIndex,
+                containerColor = Color.Transparent
+            ) {
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTabIndex == index,
+                        onClick = { selectedTabIndex = index },
+                        text = { Text(title) }
+                    )
+                }
+            }
+
+            // Başlat/Durdur Butonu
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp)
+            ) {
+                Button(
+                    onClick = {
+                        if (selectedTabIndex == 0) {
+                            isLiveRunning = !isLiveRunning
+                        } else {
+                            isBacktestRunning = !isBacktestRunning
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = if ((selectedTabIndex == 0 && isLiveRunning) || 
+                            (selectedTabIndex == 1 && isBacktestRunning))
+                            MaterialTheme.colorScheme.error
+                        else
+                            MaterialTheme.colorScheme.primary
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Icon(
+                        if ((selectedTabIndex == 0 && isLiveRunning) || 
+                            (selectedTabIndex == 1 && isBacktestRunning))
+                            Icons.Default.Clear
+                        else
+                            Icons.Default.PlayArrow,
+                        contentDescription = null,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        if ((selectedTabIndex == 0 && isLiveRunning) || 
+                            (selectedTabIndex == 1 && isBacktestRunning))
+                            "Durdur"
+                        else
+                            "Başlat"
+                    )
+                }
+            }
+
             // Strateji özeti kartı
             Card(
                 modifier = Modifier
@@ -132,8 +195,16 @@ fun LogScreen(
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                // Mock veriler için örnek işlemler
-                items(mockTradeLogs) { log ->
+                // Seçili sekmeye göre filtrelenmiş işlemler
+                val filteredLogs = mockTradeLogs.filter { log ->
+                    when (selectedTabIndex) {
+                        0 -> !log.isBacktest // Live işlemler
+                        1 -> log.isBacktest  // Backtest işlemler
+                        else -> true
+                    }
+                }
+                
+                items(filteredLogs) { log ->
                     TradeLogCard(log = log, dateFormat = dateFormat)
                 }
             }
