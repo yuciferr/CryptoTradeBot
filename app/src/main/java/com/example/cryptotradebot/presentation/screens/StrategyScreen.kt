@@ -1,5 +1,6 @@
 package com.example.cryptotradebot.presentation.screens
 
+import android.content.Context
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -33,10 +34,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.domain.model.Indicator
 import com.example.cryptotradebot.domain.model.Strategy
 import com.example.cryptotradebot.presentation.composable.CoinPriceHeader
@@ -95,7 +99,7 @@ fun StrategyScreen(
                 onClick = { showSaveDialog = true },
                 containerColor = MaterialTheme.colorScheme.primary
             ) {
-                Icon(Icons.Default.CheckCircle, "Strateji Kaydet")
+                Icon(Icons.Default.CheckCircle, stringResource(R.string.strategy_save))
             }
         }
     ) { paddingValues ->
@@ -119,10 +123,10 @@ fun StrategyScreen(
                         onClick = { navController.navigateUp() },
                         modifier = Modifier.padding(end = 8.dp)
                     ) {
-                        Icon(Icons.Default.ArrowBack, "Geri")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.strategy_back))
                     }
                     Text(
-                        text = "Strateji Oluştur",
+                        text = stringResource(R.string.strategy_create),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -138,7 +142,7 @@ fun StrategyScreen(
                     volume = state.volume24h,
                     lastUpdateTime = state.lastUpdateTime,
                     availableCoins = StrategyViewModel.availableCoins,
-                    availableTimeframes = StrategyViewModel.availableTimeframes,
+                    availableTimeframes = StrategyViewModel.availableTimeframes(LocalContext.current),
                     onCoinSelect = viewModel::onCoinSelect,
                     onTimeframeSelect = viewModel::onTimeframeSelect,
                     modifier = Modifier.padding(vertical = 8.dp)
@@ -161,7 +165,7 @@ fun StrategyScreen(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Trading Ayarları",
+                            text = stringResource(R.string.strategy_trading_settings),
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.Bold,
                             modifier = Modifier.padding(bottom = 16.dp)
@@ -171,7 +175,7 @@ fun StrategyScreen(
                         OutlinedTextField(
                             value = state.takeProfitPercentage?.toString() ?: "",
                             onValueChange = { viewModel.onTakeProfitChange(it.toFloatOrNull()) },
-                            label = { Text("Take Profit (%)") },
+                            label = { Text(stringResource(R.string.strategy_take_profit)) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
@@ -182,7 +186,7 @@ fun StrategyScreen(
                         OutlinedTextField(
                             value = state.stopLossPercentage?.toString() ?: "",
                             onValueChange = { viewModel.onStopLossChange(it.toFloatOrNull()) },
-                            label = { Text("Stop Loss (%)") },
+                            label = { Text(stringResource(R.string.strategy_stop_loss)) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
@@ -193,7 +197,7 @@ fun StrategyScreen(
                         OutlinedTextField(
                             value = state.tradeAmount?.toString() ?: "",
                             onValueChange = { viewModel.onTradeAmountChange(it.toFloatOrNull()) },
-                            label = { Text("İşlem Miktarı (USDT)") },
+                            label = { Text(stringResource(R.string.strategy_trade_amount)) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = 4.dp),
@@ -228,21 +232,21 @@ fun StrategyScreen(
                 containerColor = MaterialTheme.colorScheme.surface,
                 title = { 
                     Text(
-                        if (strategyId != null) "Stratejiyi Düzenle" else "Yeni Strateji",
+                        stringResource(if (strategyId != null) R.string.strategy_edit_title else R.string.strategy_new_title),
                         style = MaterialTheme.typography.headlineSmall
                     )
                 },
                 text = {
                     Column {
                         Text(
-                            if (strategyId != null) "Strateji ismini düzenleyin" else "Stratejiniz için bir isim belirleyin",
+                            stringResource(if (strategyId != null) R.string.strategy_edit_name_desc else R.string.strategy_new_name_desc),
                             style = MaterialTheme.typography.bodyMedium,
                             modifier = Modifier.padding(bottom = 16.dp)
                         )
                         OutlinedTextField(
                             value = strategyName,
                             onValueChange = { strategyName = it },
-                            label = { Text("Strateji Adı") },
+                            label = { Text(stringResource(R.string.strategy_name_label)) },
                             singleLine = true,
                             modifier = Modifier.fillMaxWidth()
                         )
@@ -263,12 +267,12 @@ fun StrategyScreen(
                         },
                         enabled = strategyName.isNotBlank()
                     ) {
-                        Text(if (strategyId != null) "Güncelle" else "Kaydet")
+                        Text(stringResource(if (strategyId != null) R.string.strategy_update else R.string.strategy_save_button))
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showSaveDialog = false }) {
-                        Text("İptal")
+                        Text(stringResource(R.string.strategy_cancel))
                     }
                 }
             )

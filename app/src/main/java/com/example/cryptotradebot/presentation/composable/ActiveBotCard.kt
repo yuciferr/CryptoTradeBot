@@ -4,8 +4,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.presentation.theme.GainColor
 import com.example.cryptotradebot.presentation.theme.LossColor
 import java.text.SimpleDateFormat
@@ -66,12 +68,12 @@ fun ActiveBotCard(
             ) {
                 Column {
                     Text(
-                        text = "Giriş Fiyatı",
+                        text = stringResource(R.string.active_bot_entry_price),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "$ ${String.format("%.2f", bot.entryPrice)}",
+                        text = stringResource(R.string.active_bot_price_format, bot.entryPrice),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold
                     )
@@ -79,14 +81,14 @@ fun ActiveBotCard(
                 
                 Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
                     Text(
-                        text = "Kar/Zarar",
+                        text = stringResource(R.string.active_bot_profit_loss),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                     val profitColor = if (bot.currentProfit >= 0) GainColor else LossColor
                     val profitPrefix = if (bot.currentProfit >= 0) "+" else ""
                     Text(
-                        text = "$profitPrefix$ ${String.format("%.2f", bot.currentProfit)}",
+                        text = stringResource(R.string.active_bot_profit_format, profitPrefix, bot.currentProfit),
                         style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.Bold,
                         color = profitColor
@@ -103,16 +105,16 @@ fun ActiveBotCard(
             ) {
                 Column {
                     Text(
-                        text = "Pozisyon Boyutu",
+                        text = stringResource(R.string.active_bot_position_size),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
                     Text(
-                        text = "${String.format("%.4f", bot.positionSizeCoin)} ${bot.coinName}",
+                        text = stringResource(R.string.active_bot_position_size_coin_format, bot.positionSizeCoin, bot.coinName),
                         style = MaterialTheme.typography.bodyLarge
                     )
                     Text(
-                        text = "$ ${String.format("%.2f", bot.positionSizeUsdt)}",
+                        text = stringResource(R.string.active_bot_position_size_usdt_format, bot.positionSizeUsdt),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )
@@ -121,7 +123,7 @@ fun ActiveBotCard(
                 // Açılış zamanı
                 Column(horizontalAlignment = androidx.compose.ui.Alignment.End) {
                     Text(
-                        text = "Açılış Zamanı",
+                        text = stringResource(R.string.active_bot_open_time),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                     )

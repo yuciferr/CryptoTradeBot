@@ -5,10 +5,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.presentation.viewmodel.AuthViewModel
 
 @Composable
@@ -26,7 +28,7 @@ fun AuthScreen(
         verticalArrangement = Arrangement.Center
     ) {
         Text(
-            text = "API Bilgilerini Girin",
+            text = stringResource(R.string.auth_screen_title),
             style = MaterialTheme.typography.headlineMedium
         )
         
@@ -35,7 +37,7 @@ fun AuthScreen(
         OutlinedTextField(
             value = state.apiKey,
             onValueChange = { viewModel.onApiKeyChange(it) },
-            label = { Text("API Key") },
+            label = { Text(stringResource(R.string.auth_api_key_label)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
@@ -45,7 +47,7 @@ fun AuthScreen(
         OutlinedTextField(
             value = state.apiSecret,
             onValueChange = { viewModel.onApiSecretChange(it) },
-            label = { Text("API Secret") },
+            label = { Text(stringResource(R.string.auth_api_secret_label)) },
             modifier = Modifier.fillMaxWidth(),
             visualTransformation = PasswordVisualTransformation(),
             singleLine = true
@@ -57,7 +59,7 @@ fun AuthScreen(
             onClick = { navController.navigate("dashboard") },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(text = "Dashboard'a Git")
+            Text(text = stringResource(R.string.auth_dashboard_button))
         }
     }
 } 

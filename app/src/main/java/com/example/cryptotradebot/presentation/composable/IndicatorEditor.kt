@@ -1,41 +1,19 @@
 package com.example.cryptotradebot.presentation.composable
 
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExposedDropdownMenuBox
-import androidx.compose.material3.ExposedDropdownMenuDefaults
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.domain.model.Indicator
 import com.example.cryptotradebot.domain.model.IndicatorList
 import com.example.cryptotradebot.domain.model.TriggerCondition
@@ -54,7 +32,6 @@ fun IndicatorEditor(
     var editingIndicator by remember { mutableStateOf<Pair<Int, Indicator>?>(null) }
 
     Column(modifier = modifier) {
-        // Başlık ve Ekle butonu
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -63,16 +40,15 @@ fun IndicatorEditor(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = "İndikatörler",
+                text = stringResource(R.string.indicator_title),
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
             IconButton(onClick = { showIndicatorSelector = true }) {
-                Icon(Icons.Default.Add, "İndikatör Ekle")
+                Icon(Icons.Default.Add, stringResource(R.string.indicator_add))
             }
         }
 
-        // Seçili indikatörler listesi
         selectedIndicators.forEachIndexed { index, indicator ->
             Card(
                 modifier = Modifier
@@ -106,15 +82,14 @@ fun IndicatorEditor(
                         }
                         Row {
                             IconButton(onClick = { editingIndicator = index to indicator }) {
-                                Icon(Icons.Default.Edit, "Düzenle")
+                                Icon(Icons.Default.Edit, stringResource(R.string.indicator_edit))
                             }
                             IconButton(onClick = { onRemoveIndicator(indicator) }) {
-                                Icon(Icons.Default.Delete, "Sil")
+                                Icon(Icons.Default.Delete, stringResource(R.string.indicator_delete))
                             }
                         }
                     }
 
-                    // Parametre değerleri
                     indicator.parameters.forEach { param ->
                         Row(
                             modifier = Modifier
@@ -133,9 +108,8 @@ fun IndicatorEditor(
                         }
                     }
 
-                    // Tetikleme koşulu
                     Text(
-                        text = "Signal: ${formatTriggerCondition(indicator.triggerCondition)}",
+                        text = stringResource(R.string.indicator_signal_format, formatTriggerCondition(indicator.triggerCondition)),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.secondary,
                         modifier = Modifier.padding(top = 8.dp)
@@ -145,7 +119,6 @@ fun IndicatorEditor(
         }
     }
 
-    // İndikatör seçim bottom sheet
     if (showIndicatorSelector) {
         ModalBottomSheet(onDismissRequest = { showIndicatorSelector = false }) {
             Column(
@@ -154,13 +127,20 @@ fun IndicatorEditor(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Select Indicator",
+                    text = stringResource(R.string.indicator_select_title),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
 
-                // Kategorilere göre gruplandırılmış indikatörler
-                listOf("Trend", "Momentum", "Volume", "Volatility").forEach { category ->
+                val categories = listOf(
+                    R.string.indicator_category_trend,
+                    R.string.indicator_category_momentum,
+                    R.string.indicator_category_volume,
+                    R.string.indicator_category_volatility
+                )
+
+                categories.forEach { categoryResId ->
+                    val category = stringResource(categoryResId)
                     Text(
                         text = category,
                         style = MaterialTheme.typography.titleMedium,
@@ -193,7 +173,6 @@ fun IndicatorEditor(
         }
     }
 
-    // İndikatör düzenleme bottom sheet
     editingIndicator?.let { (index, indicator) ->
         IndicatorParameterEditor(
             indicator = indicator,
@@ -225,12 +204,11 @@ private fun IndicatorParameterEditor(
                 .padding(16.dp)
         ) {
             Text(
-                text = "${indicator.name} Parametreleri",
+                text = stringResource(R.string.indicator_parameters_title, indicator.name),
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
 
-            // Parametre sliderları
             parameters.forEachIndexed { index, param ->
                 Text(
                     text = param.name,
@@ -262,30 +240,28 @@ private fun IndicatorParameterEditor(
                 )
                 Text(
                     text = if (param.step < 1) {
-                        String.format("%.1f", param.value)
+                        stringResource(R.string.indicator_parameter_decimal_format, param.value)
                     } else {
-                        String.format("%.0f", param.value)
+                        stringResource(R.string.indicator_parameter_integer_format, param.value)
                     },
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
             }
 
-            // Sinyal değerleri düzenleme bölümü (RSI, CCI gibi indikatörler için)
             if (indicator.hasEditableSignalValues) {
                 Text(
-                    text = "Sinyal Değerleri",
+                    text = stringResource(R.string.indicator_signal_values),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                 )
 
                 when (indicator.name) {
                     "RSI" -> {
-                        // RSI için özel sinyal değerleri
                         var overbought by remember { mutableStateOf(triggerCondition.compareValue ?: 70.0) }
                         var oversold by remember { mutableStateOf(triggerCondition.value) }
 
-                        Text("Aşırı Alım (Overbought)")
+                        Text(stringResource(R.string.indicator_rsi_overbought))
                         Slider(
                             value = overbought.toFloat(),
                             onValueChange = { 
@@ -294,9 +270,9 @@ private fun IndicatorParameterEditor(
                             valueRange = 50f..100f,
                             steps = 50
                         )
-                        Text(String.format("%.0f", overbought))
+                        Text(stringResource(R.string.indicator_parameter_integer_format, overbought))
 
-                        Text("Aşırı Satım (Oversold)")
+                        Text(stringResource(R.string.indicator_rsi_oversold))
                         Slider(
                             value = oversold.toFloat(),
                             onValueChange = { 
@@ -305,20 +281,18 @@ private fun IndicatorParameterEditor(
                             valueRange = 0f..50f,
                             steps = 50
                         )
-                        Text(String.format("%.0f", oversold))
+                        Text(stringResource(R.string.indicator_parameter_integer_format, oversold))
 
-                        // RSI sinyal değerlerini güncelle
                         triggerCondition = triggerCondition.copy(
                             value = oversold,
                             compareValue = overbought
                         )
                     }
                     "CCI" -> {
-                        // CCI için özel sinyal değerleri
                         var upperLevel by remember { mutableStateOf(triggerCondition.compareValue ?: 100.0) }
                         var lowerLevel by remember { mutableStateOf(triggerCondition.value) }
 
-                        Text("Üst Seviye")
+                        Text(stringResource(R.string.indicator_cci_upper))
                         Slider(
                             value = upperLevel.toFloat(),
                             onValueChange = { 
@@ -327,9 +301,9 @@ private fun IndicatorParameterEditor(
                             valueRange = 0f..200f,
                             steps = 200
                         )
-                        Text(String.format("%.0f", upperLevel))
+                        Text(stringResource(R.string.indicator_parameter_integer_format, upperLevel))
 
-                        Text("Alt Seviye")
+                        Text(stringResource(R.string.indicator_cci_lower))
                         Slider(
                             value = lowerLevel.toFloat(),
                             onValueChange = { 
@@ -338,20 +312,18 @@ private fun IndicatorParameterEditor(
                             valueRange = -200f..0f,
                             steps = 200
                         )
-                        Text(String.format("%.0f", lowerLevel))
+                        Text(stringResource(R.string.indicator_parameter_integer_format, lowerLevel))
 
-                        // CCI sinyal değerlerini güncelle
                         triggerCondition = triggerCondition.copy(
                             value = lowerLevel,
                             compareValue = upperLevel
                         )
                     }
                     "Stochastic" -> {
-                        // Stochastic için özel sinyal değerleri
                         var upperLevel by remember { mutableStateOf(triggerCondition.compareValue ?: 80.0) }
                         var lowerLevel by remember { mutableStateOf(triggerCondition.value) }
 
-                        Text("Üst Seviye")
+                        Text(stringResource(R.string.indicator_stoch_upper))
                         Slider(
                             value = upperLevel.toFloat(),
                             onValueChange = { 
@@ -360,9 +332,9 @@ private fun IndicatorParameterEditor(
                             valueRange = 50f..100f,
                             steps = 50
                         )
-                        Text(String.format("%.0f", upperLevel))
+                        Text(stringResource(R.string.indicator_parameter_integer_format, upperLevel))
 
-                        Text("Alt Seviye")
+                        Text(stringResource(R.string.indicator_stoch_lower))
                         Slider(
                             value = lowerLevel.toFloat(),
                             onValueChange = { 
@@ -371,9 +343,8 @@ private fun IndicatorParameterEditor(
                             valueRange = 0f..50f,
                             steps = 50
                         )
-                        Text(String.format("%.0f", lowerLevel))
+                        Text(stringResource(R.string.indicator_parameter_integer_format, lowerLevel))
 
-                        // Stochastic sinyal değerlerini güncelle
                         triggerCondition = triggerCondition.copy(
                             value = lowerLevel,
                             compareValue = upperLevel
@@ -382,10 +353,9 @@ private fun IndicatorParameterEditor(
                 }
             }
 
-            // Tetikleme koşulu seçimi
             if (!indicator.hasEditableSignalValues) {
                 Text(
-                    text = "Tetikleme Koşulu",
+                    text = stringResource(R.string.indicator_trigger_condition),
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
                 )
@@ -421,7 +391,6 @@ private fun IndicatorParameterEditor(
 
             Spacer(modifier = Modifier.height(16.dp))
 
-            // Kaydet butonu
             Button(
                 onClick = {
                     onSave(indicator.copy(
@@ -433,7 +402,7 @@ private fun IndicatorParameterEditor(
                     .fillMaxWidth()
                     .padding(top = 16.dp)
             ) {
-                Text("Kaydet")
+                Text(stringResource(R.string.indicator_save))
             }
 
             Spacer(modifier = Modifier.height(32.dp))

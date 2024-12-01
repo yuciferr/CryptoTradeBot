@@ -9,9 +9,12 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.presentation.composable.*
 import com.example.cryptotradebot.presentation.navigation.Screen
 import com.example.cryptotradebot.presentation.viewmodel.TradeViewModel
@@ -36,7 +39,7 @@ fun TradeScreen(
                     navController.navigate(Screen.Strategy.route)
                 }
             ) {
-                Icon(Icons.Default.Build, "Strateji Oluştur")
+                Icon(Icons.Default.Build, stringResource(R.string.trade_create_strategy))
             }
         }
     ) { paddingValues ->
@@ -54,7 +57,7 @@ fun TradeScreen(
                 volume = state.currentCandlestick?.volume?.toDouble() ?: 0.0,
                 lastUpdateTime = state.lastUpdateTime,
                 availableCoins = TradeViewModel.availableCoins,
-                availableTimeframes = TradeViewModel.availableIntervals,
+                availableTimeframes = TradeViewModel.availableIntervals(LocalContext.current),
                 onCoinSelect = viewModel::onCoinSelect,
                 onTimeframeSelect = viewModel::onIntervalSelect,
                 modifier = Modifier.padding(16.dp)
@@ -106,7 +109,7 @@ fun TradeScreen(
                             .padding(16.dp)
                     ) {
                         Text(
-                            text = "Fiyat Grafiği",
+                            text = stringResource(R.string.trade_price_chart),
                             style = MaterialTheme.typography.titleMedium,
                             color = MaterialTheme.colorScheme.onSurface
                         )
@@ -133,7 +136,7 @@ fun TradeScreen(
                                 .padding(16.dp)
                         ) {
                             Text(
-                                text = "Fiyat Detayları",
+                                text = stringResource(R.string.trade_price_details),
                                 style = MaterialTheme.typography.titleMedium,
                                 color = MaterialTheme.colorScheme.onSurface
                             )

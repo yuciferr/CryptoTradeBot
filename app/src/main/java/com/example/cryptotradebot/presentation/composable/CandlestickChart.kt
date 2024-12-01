@@ -13,6 +13,8 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
 import androidx.compose.ui.text.font.FontWeight
@@ -20,6 +22,7 @@ import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.domain.model.Candlestick
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,8 +39,15 @@ fun CandlestickChart(
     }
     
     val textMeasurer = rememberTextMeasurer()
-    val dateFormat = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    val dayFormat = remember { SimpleDateFormat("dd MMM", Locale.getDefault()) }
+    val context = LocalContext.current
+    val timeFormat = stringResource(R.string.chart_time_format)
+    val dateFormat = stringResource(R.string.chart_date_format)
+    val dayFormat = stringResource(R.string.chart_day_format)
+    
+    val timeFormatter = remember(timeFormat) { SimpleDateFormat(timeFormat, Locale.getDefault()) }
+    val dateFormatter = remember(dateFormat) { SimpleDateFormat(dateFormat, Locale.getDefault()) }
+    val dayFormatter = remember(dayFormat) { SimpleDateFormat(dayFormat, Locale.getDefault()) }
+    
     val chartBackground = Color(0xFF1E1E1E)
 
     Box(
@@ -83,7 +93,7 @@ fun CandlestickChart(
                 val price = minPrice + (priceRange * i / priceSteps)
                 val y = chartHeight - (((price - minPrice) / priceRange) * chartHeight)
                 
-                val priceText = String.format("%.2f", price)
+                val priceText = String.format(context.getString(R.string.chart_price_format), price)
                 val textWidth = textMeasurer.measure(priceText).size.width
                 
                 drawText(
@@ -152,9 +162,9 @@ fun CandlestickChart(
                     
                     val timeText = if (currentDay != lastDay) {
                         lastDay = currentDay
-                        SimpleDateFormat("dd/MM", Locale.getDefault()).format(date)
+                        dateFormatter.format(date)
                     } else {
-                        SimpleDateFormat("HH:mm", Locale.getDefault()).format(date)
+                        timeFormatter.format(date)
                     }
                     
                     val textWidth = textMeasurer.measure(timeText).size.width

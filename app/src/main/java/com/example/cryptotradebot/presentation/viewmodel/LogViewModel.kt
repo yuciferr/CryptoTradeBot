@@ -1,16 +1,19 @@
 package com.example.cryptotradebot.presentation.viewmodel
 
+import android.content.Context
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.domain.model.TradeLog
 import com.example.cryptotradebot.domain.model.TradeType
 import com.example.cryptotradebot.domain.model.Candlestick
 import com.example.cryptotradebot.domain.use_case.GetCandlesticksUseCase
 import com.example.cryptotradebot.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.Job
@@ -22,6 +25,7 @@ import kotlin.random.Random
 @HiltViewModel
 class LogViewModel @Inject constructor(
     private val getCandlesticksUseCase: GetCandlesticksUseCase,
+    @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -72,7 +76,7 @@ class LogViewModel @Inject constructor(
                 is Resource.Error -> {
                     _state.value = _state.value.copy(
                         isLoading = false,
-                        error = result.message ?: "Beklenmeyen bir hata oluştu"
+                        error = result.message ?: context.getString(R.string.error_unexpected)
                     )
                 }
                 is Resource.Loading -> {
@@ -159,29 +163,7 @@ class LogViewModel @Inject constructor(
         val selectedStrategyId: String? = null,
         val isLoading: Boolean = false,
         val error: String? = null
-    ) {
-        fun getStrategyStats(): StrategyStats {
-            val strategyLogs = logs.filter { 
-                it.strategyId == selectedStrategyId && it.isBacktest == showBacktestOnly
-            }
-            
-            val totalTrades = strategyLogs.size
-            val successfulTrades = strategyLogs.count { it.profit != null && it.profit > 0 }
-            val successRate = if (totalTrades > 0) (successfulTrades.toFloat() / totalTrades) * 100 else 0f
-            val averageProfit = strategyLogs
-                .mapNotNull { it.profit }
-                .takeIf { it.isNotEmpty() }
-                ?.average() ?: 0.0
-
-            return StrategyStats(
-                strategyName = strategyLogs.firstOrNull()?.strategyName ?: "Bilinmeyen Strateji",
-                totalTrades = totalTrades,
-                successfulTrades = successfulTrades,
-                successRate = successRate,
-                averageProfit = averageProfit
-            )
-        }
-    }
+    )
 
     data class StrategyStats(
         val strategyName: String,
@@ -190,4 +172,26 @@ class LogViewModel @Inject constructor(
         val successRate: Float,
         val averageProfit: Double
     )
+
+    fun getStrategyStats(state: LogState): StrategyStats {
+        val strategyLogs = state.logs.filter { 
+            it.strategyId == state.selectedStrategyId && it.isBacktest == state.showBacktestOnly
+        }
+        
+        val totalTrades = strategyLogs.size
+        val successfulTrades = strategyLogs.count { it.profit != null && it.profit > 0 }
+        val successRate = if (totalTrades > 0) (successfulTrades.toFloat() / totalTrades) * 100 else 0f
+        val averageProfit = strategyLogs
+            .mapNotNull { it.profit }
+            .takeIf { it.isNotEmpty() }
+            ?.average() ?: 0.0
+
+        return StrategyStats(
+            strategyName = strategyLogs.firstOrNull()?.strategyName ?: context.getString(R.string.strategy_unknown),
+            totalTrades = totalTrades,
+            successfulTrades = successfulTrades,
+            successRate = successRate,
+            averageProfit = averageProfit
+        )
+    }
 } 

@@ -5,8 +5,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.cryptotradebot.R
 
 data class AssetInfo(
     val coinName: String,
@@ -42,7 +44,7 @@ fun AssetListItem(
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = String.format("%.8f", asset.amount),
+                    text = stringResource(R.string.asset_amount_format, asset.amount),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
@@ -51,7 +53,7 @@ fun AssetListItem(
             // Orta - Coin fiyatı
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "$ ${String.format("%.2f", asset.pricePerCoin)}",
+                    text = stringResource(R.string.asset_price_format, asset.pricePerCoin),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
@@ -60,7 +62,7 @@ fun AssetListItem(
             // Sağ taraf - USDT değeri
             Column(horizontalAlignment = Alignment.End) {
                 Text(
-                    text = "$ ${String.format("%.2f", asset.valueInUsdt)}",
+                    text = stringResource(R.string.asset_value_format, asset.valueInUsdt),
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface

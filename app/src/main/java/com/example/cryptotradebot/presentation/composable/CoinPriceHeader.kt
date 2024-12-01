@@ -8,8 +8,10 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.example.cryptotradebot.R
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -29,7 +31,8 @@ fun CoinPriceHeader(
 ) {
     var showCoinSelector by remember { mutableStateOf(false) }
     var showTimeframeSelector by remember { mutableStateOf(false) }
-    val dateFormat = remember { SimpleDateFormat("HH:mm:ss", Locale.getDefault()) }
+    val timeFormat = stringResource(R.string.coin_time_format)
+    val dateFormat = remember(timeFormat) { SimpleDateFormat(timeFormat, Locale.getDefault()) }
 
     Card(
         modifier = modifier,
@@ -42,13 +45,11 @@ fun CoinPriceHeader(
                 .fillMaxWidth()
                 .padding(16.dp)
         ) {
-            // Coin ve Timeframe seçici
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Coin seçici
                 Row(
                     modifier = Modifier
                         .clickable { showCoinSelector = true }
@@ -56,17 +57,16 @@ fun CoinPriceHeader(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "$coin/USDT",
+                        text = stringResource(R.string.coin_price_pair_format, coin),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold
                     )
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Coin seç"
+                        contentDescription = stringResource(R.string.coin_price_select_coin)
                     )
                 }
 
-                // Timeframe seçici
                 Row(
                     modifier = Modifier
                         .clickable { showTimeframeSelector = true },
@@ -79,33 +79,31 @@ fun CoinPriceHeader(
                     )
                     Icon(
                         imageVector = Icons.Default.KeyboardArrowDown,
-                        contentDescription = "Zaman dilimi seç"
+                        contentDescription = stringResource(R.string.coin_price_select_timeframe)
                     )
                 }
             }
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // Fiyat
             Text(
-                text = "$ ${String.format("%.2f", price)}",
+                text = stringResource(R.string.coin_price_format, price),
                 style = MaterialTheme.typography.headlineMedium,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.primary
             )
 
-            // Hacim ve son güncelleme
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(
-                    text = "24s Hacim: $ ${String.format("%.2f", volume)}",
+                    text = stringResource(R.string.coin_volume_format, volume),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                 )
                 Text(
-                    text = "Son: ${dateFormat.format(Date(lastUpdateTime))}",
+                    text = stringResource(R.string.coin_last_update_format, dateFormat.format(Date(lastUpdateTime))),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
                 )
@@ -113,7 +111,6 @@ fun CoinPriceHeader(
         }
     }
 
-    // Coin seçim bottom sheet
     if (showCoinSelector) {
         ModalBottomSheet(
             onDismissRequest = { showCoinSelector = false }
@@ -124,7 +121,7 @@ fun CoinPriceHeader(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Coin Seçin",
+                    text = stringResource(R.string.coin_selector_title),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )
@@ -143,7 +140,7 @@ fun CoinPriceHeader(
                         }
                     ) {
                         Text(
-                            text = "$availableCoin/USDT",
+                            text = stringResource(R.string.coin_price_pair_format, availableCoin),
                             style = MaterialTheme.typography.bodyLarge,
                             modifier = Modifier.padding(16.dp)
                         )
@@ -154,7 +151,6 @@ fun CoinPriceHeader(
         }
     }
 
-    // Timeframe seçim bottom sheet
     if (showTimeframeSelector) {
         ModalBottomSheet(
             onDismissRequest = { showTimeframeSelector = false }
@@ -165,7 +161,7 @@ fun CoinPriceHeader(
                     .padding(16.dp)
             ) {
                 Text(
-                    text = "Zaman Dilimi Seçin",
+                    text = stringResource(R.string.timeframe_selector_title),
                     style = MaterialTheme.typography.titleLarge,
                     modifier = Modifier.padding(bottom = 16.dp)
                 )

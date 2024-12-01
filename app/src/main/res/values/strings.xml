@@ -1,3 +1,170 @@
 <resources>
     <string name="app_name">CryptoTradeBot</string>
+    
+    <!-- Bottom Navigation -->
+    <string name="nav_dashboard">Dashboard</string>
+    <string name="nav_trade">Trade</string>
+    <string name="nav_backtest">Backtest</string>
+    <string name="nav_dashboard_desc">Dashboard</string>
+    <string name="nav_trade_desc">Trade</string>
+    <string name="nav_backtest_desc">Backtest</string>
+
+    <!-- Active Bot Card -->
+    <string name="active_bot_entry_price">Entry Price</string>
+    <string name="active_bot_profit_loss">Profit/Loss</string>
+    <string name="active_bot_position_size">Position Size</string>
+    <string name="active_bot_open_time">Open Time</string>
+    <string name="active_bot_price_format">$ %.2f</string>
+    <string name="active_bot_profit_format">%s$ %.2f</string>
+    <string name="active_bot_position_size_coin_format">%.4f %s</string>
+    <string name="active_bot_position_size_usdt_format">$ %.2f</string>
+
+    <!-- Asset List Item -->
+    <string name="asset_amount_format">%.8f</string>
+    <string name="asset_price_format">$ %.2f</string>
+    <string name="asset_value_format">$ %.2f</string>
+
+    <!-- Candlestick Chart -->
+    <string name="chart_price_format">%.2f</string>
+    <string name="chart_time_format">HH:mm</string>
+    <string name="chart_date_format">MM/dd</string>
+    <string name="chart_day_format">MMM dd</string>
+
+    <!-- Coin Price Header -->
+    <string name="coin_price_select_coin">Select Coin</string>
+    <string name="coin_price_select_timeframe">Select Timeframe</string>
+    <string name="coin_price_pair_format">%s/USDT</string>
+    <string name="coin_price_format">$ %.2f</string>
+    <string name="coin_volume_format">24h Volume: $ %.2f</string>
+    <string name="coin_last_update_format">Last: %s</string>
+    <string name="coin_selector_title">Select Coin</string>
+    <string name="timeframe_selector_title">Select Timeframe</string>
+    <string name="coin_time_format">HH:mm:ss</string>
+
+    <!-- Indicator Editor -->
+    <string name="indicator_title">Indicators</string>
+    <string name="indicator_add">Add Indicator</string>
+    <string name="indicator_edit">Edit</string>
+    <string name="indicator_delete">Delete</string>
+    <string name="indicator_signal_format">Signal: %s</string>
+    <string name="indicator_select_title">Select Indicator</string>
+    <string name="indicator_parameters_title">%s Parameters</string>
+    <string name="indicator_category_trend">Trend</string>
+    <string name="indicator_category_momentum">Momentum</string>
+    <string name="indicator_category_volume">Volume</string>
+    <string name="indicator_category_volatility">Volatility</string>
+    <string name="indicator_signal_values">Signal Values</string>
+    <string name="indicator_trigger_condition">Trigger Condition</string>
+    <string name="indicator_save">Save</string>
+    <string name="indicator_parameter_decimal_format">%.1f</string>
+    <string name="indicator_parameter_integer_format">%.0f</string>
+    
+    <!-- RSI Indicator -->
+    <string name="indicator_rsi_overbought">Overbought</string>
+    <string name="indicator_rsi_oversold">Oversold</string>
+    
+    <!-- CCI Indicator -->
+    <string name="indicator_cci_upper">Upper Level</string>
+    <string name="indicator_cci_lower">Lower Level</string>
+    
+    <!-- Stochastic Indicator -->
+    <string name="indicator_stoch_upper">Upper Level</string>
+    <string name="indicator_stoch_lower">Lower Level</string>
+
+    <!-- Price Info Card -->
+    <string name="price_info_open">Open</string>
+    <string name="price_info_high">High</string>
+    <string name="price_info_low">Low</string>
+    <string name="price_info_close">Close</string>
+    <string name="price_info_volume">Volume</string>
+    <string name="price_info_trades">Number of Trades</string>
+
+    <!-- Saved Strategies List -->
+    <string name="saved_strategies_title">Saved Strategies</string>
+    <string name="saved_strategies_edit">Edit</string>
+    <string name="saved_strategies_stop">Stop</string>
+    <string name="saved_strategies_start">Start</string>
+    <string name="saved_strategies_coin_format">%s/USDT</string>
+    <string name="saved_strategies_indicators_title">Indicators:</string>
+    <string name="saved_strategies_indicator_item">• %s</string>
+    <string name="saved_strategies_created_at">Created: %s</string>
+    <string name="saved_strategies_date_format">MM/dd/yyyy HH:mm</string>
+
+    <!-- Wallet Summary Card -->
+    <string name="wallet_total_balance">Total Balance</string>
+    <string name="wallet_balance_format">$ %.2f USDT</string>
+    <string name="wallet_daily_change">24h Change:</string>
+    <string name="wallet_daily_percent_format">%s%.2f%%</string>
+    <string name="wallet_daily_amount_format">%s$ %.2f</string>
+
+    <!-- Auth Screen -->
+    <string name="auth_screen_title">Enter API Information</string>
+    <string name="auth_api_key_label">API Key</string>
+    <string name="auth_api_secret_label">API Secret</string>
+    <string name="auth_dashboard_button">Go to Dashboard</string>
+
+    <!-- Dashboard Screen -->
+    <string name="dashboard_assets_title">My Assets</string>
+    <string name="dashboard_active_bots_title">Active Bots</string>
+
+    <!-- Trade Screen -->
+    <string name="trade_create_strategy">Create Strategy</string>
+    <string name="trade_price_chart">Price Chart</string>
+    <string name="trade_price_details">Price Details</string>
+
+    <!-- Backtest Screen -->
+    <string name="backtest_saved_strategies">Saved Strategies</string>
+    <string name="backtest_delete_strategy_title">Delete Strategy</string>
+    <string name="backtest_delete_strategy_message">Are you sure you want to delete the strategy %s?</string>
+    <string name="backtest_delete">Delete</string>
+    <string name="backtest_cancel">Cancel</string>
+    <string name="backtest_start">Start</string>
+    <string name="backtest_stop">Stop</string>
+    <string name="backtest_edit">Edit</string>
+    <string name="backtest_trade_settings">Trade Settings:</string>
+    <string name="backtest_take_profit">• Take Profit: %%%s</string>
+    <string name="backtest_stop_loss">• Stop Loss: %%%s</string>
+    <string name="backtest_trade_amount">• Trade Amount: %s USDT</string>
+
+    <!-- Log Screen -->
+    <string name="log_back">Back</string>
+    <string name="log_live">Live</string>
+    <string name="log_backtest">Backtest</string>
+    <string name="log_start">Start</string>
+    <string name="log_stop">Stop</string>
+    <string name="log_total_trades">Total Trades</string>
+    <string name="log_average_profit">Average Profit</string>
+    <string name="log_successful_trades">Successful Trades</string>
+    <string name="log_success_rate">Success Rate</string>
+    <string name="log_coin_timeframe_format">%s/USDT - %s</string>
+    <string name="log_profit_format">+%.2f%%</string>
+
+    <!-- Strategy Screen -->
+    <string name="strategy_save">Save Strategy</string>
+    <string name="strategy_back">Back</string>
+    <string name="strategy_create">Create Strategy</string>
+    <string name="strategy_trading_settings">Trading Settings</string>
+    <string name="strategy_take_profit">Take Profit (%)</string>
+    <string name="strategy_stop_loss">Stop Loss (%)</string>
+    <string name="strategy_trade_amount">Trade Amount (USDT)</string>
+    <string name="strategy_edit_title">Edit Strategy</string>
+    <string name="strategy_new_title">New Strategy</string>
+    <string name="strategy_edit_name_desc">Edit strategy name</string>
+    <string name="strategy_new_name_desc">Set a name for your strategy</string>
+    <string name="strategy_name_label">Strategy Name</string>
+    <string name="strategy_update">Update</string>
+    <string name="strategy_save_button">Save</string>
+    <string name="strategy_cancel">Cancel</string>
+
+    <!-- Dashboard ViewModel -->
+    <string name="interval_1d">1 Day</string>
+    <string name="interval_4h">4 Hours</string>
+    <string name="interval_1h">1 Hour</string>
+    <string name="interval_15m">15 Minutes</string>
+    <string name="interval_5m">5 Minutes</string>
+    <string name="interval_1m">1 Minute</string>
+
+    <!-- Log ViewModel -->
+    <string name="error_unexpected">An unexpected error occurred</string>
+    <string name="strategy_unknown">Unknown Strategy</string>
 </resources>

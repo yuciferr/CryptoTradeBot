@@ -6,8 +6,10 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.presentation.composable.*
 
 @Composable
@@ -85,7 +87,7 @@ fun DashboardScreen(
             // Varlık Listesi Başlığı
             item {
                 Text(
-                    text = "Varlıklarım",
+                    text = stringResource(R.string.dashboard_assets_title),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )
@@ -99,7 +101,7 @@ fun DashboardScreen(
             // Aktif Botlar Başlığı
             item {
                 Text(
-                    text = "Aktif Botlar",
+                    text = stringResource(R.string.dashboard_active_bots_title),
                     style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onBackground
                 )

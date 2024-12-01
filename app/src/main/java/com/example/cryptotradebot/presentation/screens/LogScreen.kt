@@ -10,10 +10,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.domain.model.Candlestick
 import com.example.cryptotradebot.domain.model.TradeLog
 import com.example.cryptotradebot.domain.model.TradeType
@@ -36,7 +38,7 @@ fun LogScreen(
     val selectedInterval = viewModel.selectedInterval.collectAsState().value
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()) }
     var selectedTabIndex by remember { mutableStateOf(0) }
-    val tabs = listOf("Live", "Backtest")
+    val tabs = listOf(stringResource(R.string.log_live), stringResource(R.string.log_backtest))
     
     // Strateji bilgilerini al
     LaunchedEffect(key1 = Unit) {
@@ -65,7 +67,7 @@ fun LogScreen(
                 title = { Text(strategyTitle) },
                 navigationIcon = {
                     IconButton(onClick = { navController.navigateUp() }) {
-                        Icon(Icons.Default.ArrowBack, "Geri")
+                        Icon(Icons.Default.ArrowBack, stringResource(R.string.log_back))
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(
@@ -115,7 +117,7 @@ fun LogScreen(
                                 .padding(8.dp)
                         ) {
                             Text(
-                                text = "$selectedCoin/USDT - $selectedInterval",
+                                text = stringResource(R.string.log_coin_timeframe_format, selectedCoin, selectedInterval),
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
                             )
@@ -180,9 +182,9 @@ fun LogScreen(
                         Text(
                             if ((selectedTabIndex == 0 && isLiveRunning) || 
                                 (selectedTabIndex == 1 && isBacktestRunning))
-                                "Durdur"
+                                stringResource(R.string.log_stop)
                             else
-                                "Başlat"
+                                stringResource(R.string.log_start)
                         )
                     }
                 }
@@ -206,7 +208,7 @@ fun LogScreen(
                             ) {
                                 Column {
                                     Text(
-                                        text = "Toplam İşlem",
+                                        text = stringResource(R.string.log_total_trades),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                     )
@@ -217,12 +219,12 @@ fun LogScreen(
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
-                                        text = "Ortalama Kâr",
+                                        text = stringResource(R.string.log_average_profit),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                     )
                                     Text(
-                                        text = "+2.45%",
+                                        text = stringResource(R.string.log_profit_format, 2.45),
                                         style = MaterialTheme.typography.titleMedium,
                                         color = Color(0xFF4CAF50)
                                     )
@@ -235,7 +237,7 @@ fun LogScreen(
                             ) {
                                 Column {
                                     Text(
-                                        text = "Başarılı İşlem",
+                                        text = stringResource(R.string.log_successful_trades),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                     )
@@ -247,12 +249,12 @@ fun LogScreen(
                                 }
                                 Column(horizontalAlignment = Alignment.End) {
                                     Text(
-                                        text = "Başarı Oranı",
+                                        text = stringResource(R.string.log_success_rate),
                                         style = MaterialTheme.typography.bodyMedium,
                                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                     )
                                     Text(
-                                        text = "75.0%",
+                                        text = "75%",
                                         style = MaterialTheme.typography.titleMedium,
                                         color = Color(0xFF4CAF50)
                                     )

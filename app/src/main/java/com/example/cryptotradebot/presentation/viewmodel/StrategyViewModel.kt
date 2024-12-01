@@ -1,14 +1,17 @@
 package com.example.cryptotradebot.presentation.viewmodel
 
+import android.content.Context
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.domain.model.*
 import com.example.cryptotradebot.domain.use_case.GetCandlesticksUseCase
 import com.example.cryptotradebot.domain.use_case.strategy.*
 import com.example.cryptotradebot.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -18,7 +21,8 @@ import javax.inject.Inject
 class StrategyViewModel @Inject constructor(
     private val getCandlesticksUseCase: GetCandlesticksUseCase,
     private val saveStrategyUseCase: SaveStrategyUseCase,
-    private val updateStrategySettingsUseCase: UpdateStrategySettingsUseCase
+    private val updateStrategySettingsUseCase: UpdateStrategySettingsUseCase,
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _state = mutableStateOf(StrategyState())
@@ -231,13 +235,13 @@ class StrategyViewModel @Inject constructor(
 
     companion object {
         val availableCoins = listOf("BTC", "ETH", "SOL", "AVAX", "FET", "RENDER")
-        val availableTimeframes = listOf(
-            Pair("1d", "1 Günlük"),
-            Pair("4h", "4 Saatlik"),
-            Pair("1h", "1 Saatlik"),
-            Pair("15m", "15 Dakikalık"),
-            Pair("5m", "5 Dakikalık"),
-            Pair("1m", "1 Dakikalık")
+        fun availableTimeframes(context: Context) = listOf(
+            Pair("1d", context.getString(R.string.interval_1d)),
+            Pair("4h", context.getString(R.string.interval_4h)),
+            Pair("1h", context.getString(R.string.interval_1h)),
+            Pair("15m", context.getString(R.string.interval_15m)),
+            Pair("5m", context.getString(R.string.interval_5m)),
+            Pair("1m", context.getString(R.string.interval_1m))
         )
     }
 } 

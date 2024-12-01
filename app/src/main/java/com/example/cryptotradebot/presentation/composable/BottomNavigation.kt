@@ -7,8 +7,10 @@ import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.res.stringResource
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.presentation.navigation.Screen
 
 @Composable
@@ -18,8 +20,8 @@ fun CryptoBottomNavigation(navController: NavController) {
 
     NavigationBar {
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Home, contentDescription = "Dashboard") },
-            label = { Text("Dashboard") },
+            icon = { Icon(Icons.Default.Home, contentDescription = stringResource(R.string.nav_dashboard_desc)) },
+            label = { Text(stringResource(R.string.nav_dashboard)) },
             selected = currentRoute == Screen.Dashboard.route,
             onClick = {
                 if (currentRoute != Screen.Dashboard.route) {
@@ -30,8 +32,8 @@ fun CryptoBottomNavigation(navController: NavController) {
             }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Default.Build, contentDescription = "Trade") },
-            label = { Text("Trade") },
+            icon = { Icon(Icons.Default.Build, contentDescription = stringResource(R.string.nav_trade_desc)) },
+            label = { Text(stringResource(R.string.nav_trade)) },
             selected = currentRoute == Screen.Trade.route || currentRoute == Screen.Strategy.route,
             onClick = {
                 if (currentRoute != Screen.Trade.route) {
@@ -42,8 +44,8 @@ fun CryptoBottomNavigation(navController: NavController) {
             }
         )
         NavigationBarItem(
-            icon = { Icon(Icons.Default.DateRange, contentDescription = "Backtest") },
-            label = { Text("Backtest") },
+            icon = { Icon(Icons.Default.DateRange, contentDescription = stringResource(R.string.nav_backtest_desc)) },
+            label = { Text(stringResource(R.string.nav_backtest)) },
             selected = currentRoute == Screen.Backtest.route,
             onClick = {
                 if (currentRoute != Screen.Backtest.route) {

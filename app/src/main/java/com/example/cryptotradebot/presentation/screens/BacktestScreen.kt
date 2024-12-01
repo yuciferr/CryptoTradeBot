@@ -10,10 +10,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
+import com.example.cryptotradebot.R
 import com.example.cryptotradebot.domain.model.Strategy
 import com.example.cryptotradebot.presentation.composable.CryptoBottomNavigation
 import com.example.cryptotradebot.presentation.navigation.Screen
@@ -47,7 +49,7 @@ fun BacktestScreen(
         ) {
             item {
                 Text(
-                    text = "Kayıtlı Stratejiler",
+                    text = stringResource(R.string.backtest_saved_strategies),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(vertical = 16.dp)
@@ -117,8 +119,8 @@ private fun BacktestStrategyCard(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Stratejiyi Sil") },
-            text = { Text("${strategy.name} stratejisini silmek istediğinizden emin misiniz?") },
+            title = { Text(stringResource(R.string.backtest_delete_strategy_title)) },
+            text = { Text(stringResource(R.string.backtest_delete_strategy_message, strategy.name)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -126,12 +128,12 @@ private fun BacktestStrategyCard(
                         showDeleteDialog = false
                     }
                 ) {
-                    Text("Sil", color = MaterialTheme.colorScheme.error)
+                    Text(stringResource(R.string.backtest_delete), color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("İptal")
+                    Text(stringResource(R.string.backtest_cancel))
                 }
             }
         )
@@ -170,13 +172,13 @@ private fun BacktestStrategyCard(
                         if (strategy.isActive) {
                             Icon(
                                 Icons.Default.Close,
-                                contentDescription = "Durdur",
+                                contentDescription = stringResource(R.string.backtest_stop),
                                 tint = MaterialTheme.colorScheme.error
                             )
                         } else {
                             Icon(
                                 Icons.Default.PlayArrow,
-                                contentDescription = "Başlat",
+                                contentDescription = stringResource(R.string.backtest_start),
                                 tint = Color(0xFF4CAF50)
                             )
                         }
@@ -185,7 +187,7 @@ private fun BacktestStrategyCard(
                     IconButton(onClick = onEditClick) {
                         Icon(
                             Icons.Default.Edit,
-                            contentDescription = "Düzenle",
+                            contentDescription = stringResource(R.string.backtest_edit),
                             tint = MaterialTheme.colorScheme.primary
                         )
                     }
@@ -221,7 +223,7 @@ private fun BacktestStrategyCard(
             // Trade Settings
             if (strategy.takeProfitPercentage != null || strategy.stopLossPercentage != null || strategy.tradeAmount != null) {
                 Text(
-                    text = "Trade Ayarları:",
+                    text = stringResource(R.string.backtest_trade_settings),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f),
                     modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
@@ -229,7 +231,7 @@ private fun BacktestStrategyCard(
                 
                 strategy.takeProfitPercentage?.let {
                     Text(
-                        text = "• Take Profit: %${String.format("%.2f", it)}",
+                        text = stringResource(R.string.backtest_take_profit, String.format("%.2f", it)),
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color(0xFF4CAF50)
                     )
@@ -237,7 +239,7 @@ private fun BacktestStrategyCard(
                 
                 strategy.stopLossPercentage?.let {
                     Text(
-                        text = "• Stop Loss: %${String.format("%.2f", it)}",
+                        text = stringResource(R.string.backtest_stop_loss, String.format("%.2f", it)),
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.error
                     )
@@ -245,7 +247,7 @@ private fun BacktestStrategyCard(
                 
                 strategy.tradeAmount?.let {
                     Text(
-                        text = "• İşlem Miktarı: ${String.format("%.2f", it)} USDT",
+                        text = stringResource(R.string.backtest_trade_amount, String.format("%.2f", it)),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
