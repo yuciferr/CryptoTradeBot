@@ -85,7 +85,7 @@ object NetworkModule {
     @Named("tradeRetrofit")
     fun provideTradeRetrofit(@Named("tradeClient") okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
-            .baseUrl("http://localhost:8000")
+            .baseUrl("http://10.0.2.2:8000")
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()

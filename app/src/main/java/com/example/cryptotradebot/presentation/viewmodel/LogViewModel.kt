@@ -7,10 +7,21 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cryptotradebot.R
+import com.example.cryptotradebot.data.remote.dto.BacktestRequest
+import com.example.cryptotradebot.data.remote.dto.BollingerSettings
+import com.example.cryptotradebot.data.remote.dto.EMASettings
+import com.example.cryptotradebot.data.remote.dto.IndicatorSettings
+import com.example.cryptotradebot.data.remote.dto.MACDSettings
+import com.example.cryptotradebot.data.remote.dto.RSISettings
+import com.example.cryptotradebot.data.remote.dto.RiskManagement
+import com.example.cryptotradebot.data.remote.dto.SMASettings
 import com.example.cryptotradebot.domain.model.TradeLog
 import com.example.cryptotradebot.domain.model.TradeType
 import com.example.cryptotradebot.domain.model.Candlestick
+import com.example.cryptotradebot.domain.model.Strategy
+import com.example.cryptotradebot.domain.model.TriggerType
 import com.example.cryptotradebot.domain.use_case.GetCandlesticksUseCase
+import com.example.cryptotradebot.domain.use_case.trade.RunBacktestUseCase
 import com.example.cryptotradebot.utils.Resource
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -21,10 +32,20 @@ import kotlinx.coroutines.launch
 import java.util.*
 import javax.inject.Inject
 import kotlin.random.Random
+import com.google.gson.Gson
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.withTimeout
+
+sealed class LogUiState {
+    object Loading : LogUiState()
+    data class Error(val message: String) : LogUiState()
+    data class Success(val data: Any) : LogUiState()
+}
 
 @HiltViewModel
 class LogViewModel @Inject constructor(
     private val getCandlesticksUseCase: GetCandlesticksUseCase,
+    private val runBacktestUseCase: RunBacktestUseCase,
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -35,7 +56,17 @@ class LogViewModel @Inject constructor(
     private val _candlesticks = MutableStateFlow<List<Candlestick>>(emptyList())
     val candlesticks = _candlesticks.asStateFlow()
 
+    private var _strategy = MutableStateFlow<Strategy?>(null)
+    val strategy = _strategy.asStateFlow()
+
+    private var _isBacktestRunning = MutableStateFlow(false)
+    val isBacktestRunning = _isBacktestRunning.asStateFlow()
+
+    private var _backtestResults = MutableStateFlow<List<TradeLog>>(emptyList())
+    val backtestResults = _backtestResults.asStateFlow()
+
     private var fetchJob: Job? = null
+    private var backtestJob: Job? = null
     
     private var _selectedCoin = MutableStateFlow("BTC")
     val selectedCoin = _selectedCoin.asStateFlow()
@@ -43,12 +74,38 @@ class LogViewModel @Inject constructor(
     private var _selectedInterval = MutableStateFlow("1h")
     val selectedInterval = _selectedInterval.asStateFlow()
 
+    private val _uiState = MutableStateFlow<LogUiState>(LogUiState.Success(Unit))
+    val uiState = _uiState.asStateFlow()
+
+    private var lastRequest: BacktestRequest? = null
+
     init {
         savedStateHandle.get<String>("selectedStrategyId")?.let { strategyId ->
             _state.value = _state.value.copy(selectedStrategyId = strategyId)
+            android.util.Log.d("yuci", "LogViewModel - SelectedStrategyId: $strategyId")
         }
         savedStateHandle.get<Boolean>("showBacktestOnly")?.let { showBacktest ->
             _state.value = _state.value.copy(showBacktestOnly = showBacktest)
+            android.util.Log.d("yuci", "LogViewModel - ShowBacktestOnly: $showBacktest")
+        }
+        savedStateHandle.get<String>("strategyJson")?.let { strategyJson ->
+            android.util.Log.d("yuci", "LogViewModel - Received StrategyJson: $strategyJson")
+            try {
+                val gson = Gson()
+                val strategy = gson.fromJson(strategyJson, Strategy::class.java)
+                android.util.Log.d("yuci", "LogViewModel - Parsed Strategy: $strategy")
+                _strategy.value = strategy
+                _selectedCoin.value = strategy.coin
+                _selectedInterval.value = strategy.timeframe
+                getCandlesticks()
+            } catch (e: Exception) {
+                android.util.Log.e("yuci", "LogViewModel - Strategy Parse Error: ${e.message}", e)
+                _state.value = _state.value.copy(
+                    error = context.getString(R.string.error_strategy_parse)
+                )
+            }
+        } ?: run {
+            android.util.Log.d("yuci", "LogViewModel - No StrategyJson received")
         }
         loadMockData()
         getCandlesticks()
@@ -157,6 +214,174 @@ class LogViewModel @Inject constructor(
         _state.value = _state.value.copy(selectedStrategyId = null)
     }
 
+    fun updateStrategy(strategyJson: String) {
+        try {
+            val gson = Gson()
+            val strategy = gson.fromJson(strategyJson, Strategy::class.java)
+            _strategy.value = strategy
+            _selectedCoin.value = strategy.coin
+            _selectedInterval.value = strategy.timeframe
+            _state.value = _state.value.copy(error = null)
+            getCandlesticks()
+        } catch (e: Exception) {
+            _state.value = _state.value.copy(
+                error = context.getString(R.string.error_strategy_parse)
+            )
+        }
+    }
+
+    fun startBacktest() {
+        _strategy.value?.let { strategy ->
+            backtestJob?.cancel()
+            backtestJob = viewModelScope.launch {
+                _isBacktestRunning.value = true
+                _backtestResults.value = emptyList()
+                _uiState.value = LogUiState.Loading
+                
+                try {
+                    // İndikatör ayarlarını dönüştür
+                    val indicatorSettings = IndicatorSettings(
+                        rsi = strategy.indicators.find { it.name == "RSI" }?.let { indicator ->
+                            val triggerValues = when (indicator.triggerCondition.type) {
+                                TriggerType.CROSSES_ABOVE, TriggerType.GREATER_THAN -> {
+                                    Pair(indicator.triggerCondition.value.toInt(), indicator.triggerCondition.compareValue?.toInt() ?: 30)
+                                }
+                                TriggerType.CROSSES_BELOW, TriggerType.LESS_THAN -> {
+                                    Pair(indicator.triggerCondition.compareValue?.toInt() ?: 70, indicator.triggerCondition.value.toInt())
+                                }
+                                else -> Pair(70, 30)
+                            }
+                            RSISettings(
+                                period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 14,
+                                overbought = triggerValues.first,
+                                oversold = triggerValues.second
+                            )
+                        },
+                        macd = strategy.indicators.find { it.name == "MACD" }?.let { indicator ->
+                            MACDSettings(
+                                fast = indicator.parameters.find { it.name == "Fast Period" }?.value?.toInt() ?: 12,
+                                slow = indicator.parameters.find { it.name == "Slow Period" }?.value?.toInt() ?: 26,
+                                signal = indicator.parameters.find { it.name == "Signal Period" }?.value?.toInt() ?: 9
+                            )
+                        },
+                        bollinger = strategy.indicators.find { it.name == "Bollinger" }?.let { indicator ->
+                            BollingerSettings(
+                                period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20,
+                                std = indicator.parameters.find { it.name == "Standard Deviation" }?.value?.toInt() ?: 2
+                            )
+                        },
+                        sma = strategy.indicators.find { it.name == "SMA" }?.let { indicator ->
+                            SMASettings(
+                                periods = listOf(indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20)
+                            )
+                        },
+                        ema = strategy.indicators.find { it.name == "EMA" }?.let { indicator ->
+                            EMASettings(
+                                periods = listOf(indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20)
+                            )
+                        }
+                    )
+
+                    val request = BacktestRequest(
+                        symbol = "${strategy.coin}USDT",
+                        timeframe = strategy.timeframe,
+                        initialBalance = strategy.tradeAmount?.toDouble() ?: 10000.0,
+                        indicatorSettings = indicatorSettings,
+                        riskManagement = if (strategy.takeProfitPercentage != null || strategy.stopLossPercentage != null) {
+                            RiskManagement(
+                                stopLoss = strategy.stopLossPercentage?.toDouble() ?: 1.5,
+                                takeProfit = strategy.takeProfitPercentage?.toDouble() ?: 2.0
+                            )
+                        } else null
+                    )
+                    lastRequest = request  // Son isteği kaydet
+
+                    android.util.Log.d("yuci_backtest", "Request: $request")
+                    android.util.Log.d("yuci_backtest", "Strategy: $strategy")
+                    android.util.Log.d("yuci_backtest", "IndicatorSettings: $indicatorSettings")
+                    android.util.Log.d("yuci_backtest", "RSI Trigger Condition: ${strategy.indicators.find { it.name == "RSI" }?.triggerCondition}")
+
+                    when (val result = runBacktestUseCase(request)) {
+                        is Resource.Success -> {
+                            android.util.Log.d("yuci_backtest", "Success Response: ${result.data}")
+                            try {
+                                val trades = result.data?.get("trades") as? List<*>
+                                android.util.Log.d("yuci_backtest", "Trades List: $trades")
+                                
+                                if (trades == null) {
+                                    throw Exception("Trades verisi boş veya null")
+                                }
+
+                                val tradeLogs = trades.mapNotNull { trade ->
+                                    try {
+                                        @Suppress("UNCHECKED_CAST")
+                                        (trade as? Map<String, Any>)?.let { tradeMap ->
+                                            android.util.Log.d("yuci_backtest", "Processing trade: $tradeMap")
+                                            TradeLog(
+                                                id = tradeMap["id"]?.toString() ?: UUID.randomUUID().toString(),
+                                                strategyId = strategy.id,
+                                                strategyName = strategy.name,
+                                                coin = strategy.coin,
+                                                type = TradeType.valueOf((tradeMap["type"] as? String) ?: "BUY"),
+                                                price = (tradeMap["price"] as? Number)?.toDouble() ?: 0.0,
+                                                amount = (tradeMap["amount"] as? Number)?.toDouble() ?: 0.0,
+                                                total = (tradeMap["total"] as? Number)?.toDouble() ?: 0.0,
+                                                timestamp = (tradeMap["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis(),
+                                                profit = (tradeMap["profit"] as? Number)?.toDouble(),
+                                                isBacktest = true
+                                            )
+                                        }
+                                    } catch (e: Exception) {
+                                        android.util.Log.e("yuci_backtest", "Trade dönüştürme hatası: ${e.message}", e)
+                                        null
+                                    }
+                                }
+                                
+                                android.util.Log.d("yuci_backtest", "Processed TradeLog List: $tradeLogs")
+                                _backtestResults.value = tradeLogs
+                                _state.value = _state.value.copy(error = null)
+                                _uiState.value = LogUiState.Success(Unit)
+                                
+                            } catch (e: Exception) {
+                                android.util.Log.e("yuci_backtest", "Veri dönüştürme hatası: ${e.message}", e)
+                                _uiState.value = LogUiState.Error("Veri dönüştürme hatası: ${e.message}")
+                            }
+                        }
+                        is Resource.Error -> {
+                            android.util.Log.e("yuci_backtest", "Error: ${result.message}")
+                            _uiState.value = LogUiState.Error(
+                                result.message ?: context.getString(R.string.error_backtest_failed)
+                            )
+                        }
+                        is Resource.Loading -> {
+                            _uiState.value = LogUiState.Loading
+                        }
+                    }
+                } catch (e: Exception) {
+                    android.util.Log.e("yuci_backtest", "Genel hata: ${e.message}", e)
+                    _uiState.value = LogUiState.Error(
+                        "Backtest işlemi sırasında bir hata oluştu: ${e.message}"
+                    )
+                } finally {
+                    _isBacktestRunning.value = false
+                }
+            }
+        } ?: run {
+            _uiState.value = LogUiState.Error(context.getString(R.string.error_no_strategy))
+        }
+    }
+
+    fun retryLastRequest() {
+        lastRequest?.let {
+            startBacktest()
+        }
+    }
+
+    fun stopBacktest() {
+        backtestJob?.cancel()
+        _isBacktestRunning.value = false
+    }
+
     data class LogState(
         val logs: List<TradeLog> = emptyList(),
         val showBacktestOnly: Boolean = false,
@@ -187,7 +412,7 @@ class LogViewModel @Inject constructor(
             ?.average() ?: 0.0
 
         return StrategyStats(
-            strategyName = strategyLogs.firstOrNull()?.strategyName ?: context.getString(R.string.strategy_unknown),
+            strategyName = strategyLogs.firstOrNull()?.strategyName ?: context.getString(R.string.log_strategy_unknown),
             totalTrades = totalTrades,
             successfulTrades = successfulTrades,
             successRate = successRate,

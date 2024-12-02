@@ -137,7 +137,21 @@
     <string name="log_successful_trades">Successful Trades</string>
     <string name="log_success_rate">Success Rate</string>
     <string name="log_coin_timeframe_format">%s/USDT - %s</string>
-    <string name="log_profit_format">+%.2f%%</string>
+    <string name="log_profit_format">%.2f%%</string>
+    <string name="log_strategy_details">Strategy Details</string>
+    <string name="log_take_profit">Take Profit</string>
+    <string name="log_stop_loss">Stop Loss</string>
+    <string name="log_trade_amount">Trade Amount</string>
+    <string name="log_indicators">Indicators</string>
+    <string name="log_percentage_format">%.2f%%</string>
+    <string name="log_amount_format">%.2f USDT</string>
+    <string name="log_backtest_results">Backtest Results</string>
+    <string name="log_total_profit">Total Profit</string>
+    <string name="log_win_rate">Win Rate</string>
+    <string name="log_trade_history">Trade History</string>
+    <string name="log_buy_format">BUY %.4f %s</string>
+    <string name="log_sell_format">SELL %.4f %s</string>
+    <string name="log_price_format">$ %.2f</string>
 
     <!-- Strategy Screen -->
     <string name="strategy_save">Save Strategy</string>
@@ -165,6 +179,14 @@
     <string name="interval_1m">1 Minute</string>
 
     <!-- Log ViewModel -->
-    <string name="error_unexpected">An unexpected error occurred</string>
-    <string name="strategy_unknown">Unknown Strategy</string>
+    <string name="error_unexpected">Beklenmeyen bir hata oluştu</string>
+    <string name="error_strategy_parse">Strateji verisi işlenirken bir hata oluştu</string>
+    <string name="error_backtest_failed">Backtest işlemi başarısız oldu</string>
+    <string name="error_no_strategy">Strateji bulunamadı</string>
+    <string name="error_invalid_parameters">Geçersiz parametre değerleri</string>
+    <string name="log_backtest_started">Backtest başlatıldı</string>
+    <string name="log_backtest_completed">Backtest tamamlandı</string>
+    <string name="log_backtest_cancelled">Backtest iptal edildi</string>
+    <string name="log_strategy_loaded">Strateji yüklendi: %s</string>
+    <string name="log_strategy_unknown">Bilinmeyen Strateji</string>
 </resources>

@@ -21,6 +21,7 @@ import com.example.cryptotradebot.domain.model.TradeLog
 import com.example.cryptotradebot.domain.model.TradeType
 import com.example.cryptotradebot.presentation.composable.CryptoBottomNavigation
 import com.example.cryptotradebot.presentation.composable.CandlestickChart
+import com.example.cryptotradebot.presentation.viewmodel.LogUiState
 import com.example.cryptotradebot.presentation.viewmodel.LogViewModel
 import java.text.SimpleDateFormat
 import java.util.*
@@ -36,30 +37,31 @@ fun LogScreen(
     val candlesticks = viewModel.candlesticks.collectAsState().value
     val selectedCoin = viewModel.selectedCoin.collectAsState().value
     val selectedInterval = viewModel.selectedInterval.collectAsState().value
+    val strategy = viewModel.strategy.collectAsState().value
+    val isBacktestRunning = viewModel.isBacktestRunning.collectAsState().value
+    val backtestResults = viewModel.backtestResults.collectAsState().value
     val dateFormat = remember { SimpleDateFormat("dd/MM/yyyy HH:mm:ss", Locale.getDefault()) }
-    var selectedTabIndex by remember { mutableStateOf(0) }
+    var selectedTabIndex by remember { mutableStateOf(1) }
     val tabs = listOf(stringResource(R.string.log_live), stringResource(R.string.log_backtest))
+    var isLiveRunning by remember { mutableStateOf(false) }
     
-    // Strateji bilgilerini al
-    LaunchedEffect(key1 = Unit) {
-        navController.currentBackStackEntry?.savedStateHandle?.let { handle ->
+    // Strateji verilerini al ve ViewModel'e aktar
+    LaunchedEffect(Unit) {
+        navController.previousBackStackEntry?.savedStateHandle?.let { handle ->
+            handle.get<String>("strategyJson")?.let { json ->
+                android.util.Log.d("yuci", "LogScreen - Received StrategyJson: $json")
+                viewModel.updateStrategy(json)
+            }
             handle.get<String>("strategyCoin")?.let { coin ->
+                android.util.Log.d("yuci", "LogScreen - Received Coin: $coin")
                 viewModel.onCoinSelect(coin)
             }
             handle.get<String>("strategyTimeframe")?.let { timeframe ->
+                android.util.Log.d("yuci", "LogScreen - Received Timeframe: $timeframe")
                 viewModel.onIntervalSelect(timeframe)
-            }
-            handle.get<Boolean>("showBacktestOnly")?.let { showBacktest ->
-                if (showBacktest) {
-                    selectedTabIndex = 1
-                }
             }
         }
     }
-
-    // Her sekme için çalışma durumu
-    var isLiveRunning by remember { mutableStateOf(false) }
-    var isBacktestRunning by remember { mutableStateOf(false) }
 
     Scaffold(
         topBar = {
@@ -95,13 +97,13 @@ fun LogScreen(
                 }
             }
 
-            // Ana içerik - LazyColumn
+            // Ana içerik
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // 1. Grafik
+                // Grafik
                 item {
                     Card(
                         modifier = Modifier
@@ -121,161 +123,263 @@ fun LogScreen(
                                 style = MaterialTheme.typography.titleMedium,
                                 modifier = Modifier.padding(start = 8.dp, bottom = 8.dp)
                             )
-                            if (state.isLoading) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
+                            when (val uiState = viewModel.uiState.collectAsState().value) {
+                                is LogUiState.Loading -> {
+                                    Box(
+                                        modifier = Modifier.fillMaxSize(),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        CircularProgressIndicator()
+                                    }
                                 }
-                            } else if (state.error != null) {
-                                Box(
-                                    modifier = Modifier.fillMaxSize(),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        text = state.error,
-                                        color = MaterialTheme.colorScheme.error
+                                is LogUiState.Error -> {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .padding(16.dp),
+                                        verticalArrangement = Arrangement.Center,
+                                        horizontalAlignment = Alignment.CenterHorizontally
+                                    ) {
+                                        Text(
+                                            text = uiState.message,
+                                            color = MaterialTheme.colorScheme.error
+                                        )
+                                        Spacer(modifier = Modifier.height(16.dp))
+                                        Button(onClick = { viewModel.retryLastRequest() }) {
+                                            Text("Tekrar Dene")
+                                        }
+                                    }
+                                }
+                                is LogUiState.Success -> {
+                                    CandlestickChart(
+                                        candlesticks = candlesticks,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .weight(1f)
                                     )
                                 }
-                            } else {
-                                CandlestickChart(
-                                    candlesticks = candlesticks,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .weight(1f)
-                                )
                             }
                         }
                     }
                 }
 
-                // 2. Başlat/Durdur Butonu
+                // Live/Backtest Başlat/Durdur Butonları
                 item {
-                    Button(
-                        onClick = {
-                            if (selectedTabIndex == 0) {
-                                isLiveRunning = !isLiveRunning
-                            } else {
-                                isBacktestRunning = !isBacktestRunning
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = if ((selectedTabIndex == 0 && isLiveRunning) || 
-                                (selectedTabIndex == 1 && isBacktestRunning))
-                                MaterialTheme.colorScheme.error
-                            else
-                                MaterialTheme.colorScheme.primary
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Icon(
-                            if ((selectedTabIndex == 0 && isLiveRunning) || 
-                                (selectedTabIndex == 1 && isBacktestRunning))
-                                Icons.Default.Clear
-                            else
-                                Icons.Default.PlayArrow,
-                            contentDescription = null,
-                            modifier = Modifier.size(20.dp)
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            if ((selectedTabIndex == 0 && isLiveRunning) || 
-                                (selectedTabIndex == 1 && isBacktestRunning))
-                                stringResource(R.string.log_stop)
-                            else
-                                stringResource(R.string.log_start)
-                        )
-                    }
-                }
-
-                // 3. Strateji Özeti Kartı
-                item {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.1f)
-                        )
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp)
+                    if (selectedTabIndex == 0) {
+                        // Live Trading Button
+                        Button(
+                            onClick = { isLiveRunning = !isLiveRunning },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isLiveRunning)
+                                    MaterialTheme.colorScheme.error
+                                else
+                                    MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
                         ) {
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text(
-                                        text = stringResource(R.string.log_total_trades),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                    )
-                                    Text(
-                                        text = "24",
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
+                            Icon(
+                                if (isLiveRunning) Icons.Default.Clear else Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (isLiveRunning)
+                                    stringResource(R.string.log_stop)
+                                else
+                                    stringResource(R.string.log_start)
+                            )
+                        }
+                    } else {
+                        // Backtest Button
+                        Button(
+                            onClick = {
+                                if (isBacktestRunning) {
+                                    viewModel.stopBacktest()
+                                } else {
+                                    viewModel.startBacktest()
                                 }
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = stringResource(R.string.log_average_profit),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                    )
-                                    Text(
-                                        text = stringResource(R.string.log_profit_format, 2.45),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = Color(0xFF4CAF50)
-                                    )
-                                }
+                            },
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = if (isBacktestRunning)
+                                    MaterialTheme.colorScheme.error
+                                else
+                                    MaterialTheme.colorScheme.primary
+                            ),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            if (isBacktestRunning) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(20.dp),
+                                    color = MaterialTheme.colorScheme.onError,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
                             }
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Column {
-                                    Text(
-                                        text = stringResource(R.string.log_successful_trades),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                    )
-                                    Text(
-                                        text = "18",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = Color(0xFF4CAF50)
-                                    )
-                                }
-                                Column(horizontalAlignment = Alignment.End) {
-                                    Text(
-                                        text = stringResource(R.string.log_success_rate),
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                    )
-                                    Text(
-                                        text = "75%",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = Color(0xFF4CAF50)
-                                    )
-                                }
-                            }
+                            Icon(
+                                if (isBacktestRunning) Icons.Default.Clear else Icons.Default.PlayArrow,
+                                contentDescription = null,
+                                modifier = Modifier.size(20.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                if (isBacktestRunning)
+                                    stringResource(R.string.log_stop)
+                                else
+                                    stringResource(R.string.log_start)
+                            )
                         }
                     }
                 }
 
-                // 4. İşlem Logları
-                val filteredLogs = mockTradeLogs.filter { log ->
-                    when (selectedTabIndex) {
-                        0 -> !log.isBacktest // Live işlemler
-                        1 -> log.isBacktest  // Backtest işlemler
-                        else -> true
+                // Backtest Sonuçları (sadece backtest sekmesinde ve sonuçlar varsa göster)
+                if (selectedTabIndex == 1 && backtestResults.isNotEmpty()) {
+                    item {
+                        BacktestResultsCard(
+                            backtestResults = backtestResults,
+                            dateFormat = dateFormat
+                        )
                     }
                 }
-                
-                items(filteredLogs) { log ->
-                    TradeLogCard(log = log, dateFormat = dateFormat)
-                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BacktestResultsCard(
+    backtestResults: List<TradeLog>,
+    dateFormat: SimpleDateFormat
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f)
+        )
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.log_backtest_results),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // İstatistikler
+            val totalTrades = backtestResults.size
+            val successfulTrades = backtestResults.count { it.profit != null && it.profit > 0 }
+            val totalProfit = backtestResults.mapNotNull { it.profit }.sum()
+            val winRate = if (totalTrades > 0) (successfulTrades.toFloat() / totalTrades) * 100 else 0f
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StatisticItem(
+                    title = stringResource(R.string.log_total_trades),
+                    value = totalTrades.toString()
+                )
+                StatisticItem(
+                    title = stringResource(R.string.log_successful_trades),
+                    value = successfulTrades.toString(),
+                    valueColor = Color(0xFF4CAF50)
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                StatisticItem(
+                    title = stringResource(R.string.log_total_profit),
+                    value = stringResource(R.string.log_profit_format, totalProfit),
+                    valueColor = if (totalProfit >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                )
+                StatisticItem(
+                    title = stringResource(R.string.log_win_rate),
+                    value = stringResource(R.string.log_percentage_format, winRate),
+                    valueColor = Color(0xFF4CAF50)
+                )
+            }
+
+            // İşlem Listesi
+            Text(
+                text = stringResource(R.string.log_trade_history),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+            )
+
+            backtestResults.forEach { trade ->
+                TradeLogItem(trade = trade, dateFormat = dateFormat)
+                Divider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun StatisticItem(
+    title: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Column {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.titleMedium,
+            color = valueColor
+        )
+    }
+}
+
+@Composable
+private fun TradeLogItem(
+    trade: TradeLog,
+    dateFormat: SimpleDateFormat
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
+            Text(
+                text = dateFormat.format(trade.timestamp),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+            Text(
+                text = stringResource(
+                    if (trade.type == TradeType.BUY) R.string.log_buy_format else R.string.log_sell_format,
+                    trade.amount,
+                    trade.coin
+                ),
+                style = MaterialTheme.typography.bodyMedium
+            )
+        }
+        Column(horizontalAlignment = Alignment.End) {
+            Text(
+                text = stringResource(R.string.log_price_format, trade.price),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            trade.profit?.let { profit ->
+                Text(
+                    text = stringResource(R.string.log_profit_format, profit),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (profit >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                )
             }
         }
     }

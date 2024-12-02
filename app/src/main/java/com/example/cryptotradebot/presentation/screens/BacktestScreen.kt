@@ -85,12 +85,14 @@ fun BacktestScreen(
                     },
                     onToggleClick = { viewModel.onToggleStrategy(strategy) },
                     onLogClick = { 
+                        val strategyJson = gson.toJson(strategy)
+                        android.util.Log.d("yuci", "BacktestScreen - Strategy: $strategy")
+                        android.util.Log.d("yuci", "BacktestScreen - StrategyJson: $strategyJson")
                         with(navController.currentBackStackEntry?.savedStateHandle) {
-                            this?.set("selectedStrategyId", strategy.id)
-                            this?.set("showBacktestOnly", true)
+                            this?.set("strategyJson", strategyJson)
+                            this?.set("strategyName", strategy.name)
                             this?.set("strategyCoin", strategy.coin)
                             this?.set("strategyTimeframe", strategy.timeframe)
-                            this?.set("strategyName", strategy.name)
                         }
                         navController.navigate("log_screen/${URLEncoder.encode(strategy.name, "UTF-8")}")
                     },
