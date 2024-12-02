@@ -3,10 +3,10 @@ package com.example.cryptotradebot.domain.use_case.trade
 import com.example.cryptotradebot.domain.repository.TradeRepository
 import javax.inject.Inject
 
-class ConnectToTradeUpdatesUseCase @Inject constructor(
+class DisconnectFromTradeSignalsUseCase @Inject constructor(
     private val repository: TradeRepository
 ) {
     operator fun invoke() {
-        repository.connectToTradeUpdates()
+        repository.disconnectFromTradeSignals()
     }
 } 

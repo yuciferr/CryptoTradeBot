@@ -8,8 +8,8 @@ interface LiveTradeApi {
     suspend fun startLiveTrade(@Body request: Map<String, Any>): Response<Map<String, Any>>
 
     @GET("/api/livetrade/")
-    suspend fun getLiveTradeStatus(): Response<Map<String, Any>>
+    suspend fun getLiveTradeStatus(@Query("symbol") symbol: String? = null): Response<List<Map<String, Any>>>
 
     @DELETE("/api/livetrade/")
-    suspend fun stopLiveTrade(): Response<Map<String, Any>>
+    suspend fun stopLiveTrade(@Query("symbol") symbol: String? = null): Response<Map<String, Any>>
 } 

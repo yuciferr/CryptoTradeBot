@@ -1,12 +1,13 @@
 package com.example.cryptotradebot.domain.use_case.trade
 
-data class TradeUseCases(
+import javax.inject.Inject
+
+data class TradeUseCases @Inject constructor(
     val runBacktest: RunBacktestUseCase,
     val startLiveTrade: StartLiveTradeUseCase,
-    val stopLiveTrade: StopLiveTradeUseCase,
     val getLiveTradeStatus: GetLiveTradeStatusUseCase,
-    val getTradeUpdates: GetTradeUpdatesUseCase,
-    val connectToTradeUpdates: ConnectToTradeUpdatesUseCase,
-    val disconnectFromTradeUpdates: DisconnectFromTradeUpdatesUseCase,
-    val sendTradeMessage: SendTradeMessageUseCase
+    val stopLiveTrade: StopLiveTradeUseCase,
+    val connectToTradeSignals: ConnectToTradeSignalsUseCase,
+    val disconnectFromTradeSignals: DisconnectFromTradeSignalsUseCase,
+    val getTradeSignals: GetTradeSignalsUseCase
 ) 

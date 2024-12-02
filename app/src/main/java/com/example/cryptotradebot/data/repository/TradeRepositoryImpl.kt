@@ -1,9 +1,11 @@
 package com.example.cryptotradebot.data.repository
 
+import android.util.Log
 import com.example.cryptotradebot.data.remote.BacktestApi
 import com.example.cryptotradebot.data.remote.LiveTradeApi
 import com.example.cryptotradebot.data.remote.TradeWebSocketService
 import com.example.cryptotradebot.data.remote.dto.BacktestRequest
+import com.example.cryptotradebot.domain.model.TradeSignal
 import com.example.cryptotradebot.domain.repository.TradeRepository
 import kotlinx.coroutines.flow.Flow
 import javax.inject.Inject
@@ -25,6 +27,7 @@ class TradeRepositoryImpl @Inject constructor(
                 Result.failure(Exception("Backtest failed: ${response.code()}"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error running backtest", e)
             Result.failure(e)
         }
     }
@@ -38,49 +41,52 @@ class TradeRepositoryImpl @Inject constructor(
                 Result.failure(Exception("Live trade start failed: ${response.code()}"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error starting live trade", e)
             Result.failure(e)
         }
     }
 
-    override suspend fun getLiveTradeStatus(): Result<Map<String, Any>> {
+    override suspend fun getLiveTradeStatus(symbol: String?): Result<List<Map<String, Any>>> {
         return try {
-            val response = liveTradeApi.getLiveTradeStatus()
+            val response = liveTradeApi.getLiveTradeStatus(symbol)
             if (response.isSuccessful) {
-                Result.success(response.body() ?: emptyMap())
+                Result.success(response.body() ?: emptyList())
             } else {
                 Result.failure(Exception("Get status failed: ${response.code()}"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error getting live trade status", e)
             Result.failure(e)
         }
     }
 
-    override suspend fun stopLiveTrade(): Result<Map<String, Any>> {
+    override suspend fun stopLiveTrade(symbol: String?): Result<Map<String, Any>> {
         return try {
-            val response = liveTradeApi.stopLiveTrade()
+            val response = liveTradeApi.stopLiveTrade(symbol)
             if (response.isSuccessful) {
                 Result.success(response.body() ?: emptyMap())
             } else {
                 Result.failure(Exception("Stop trade failed: ${response.code()}"))
             }
         } catch (e: Exception) {
+            Log.e(TAG, "Error stopping live trade", e)
             Result.failure(e)
         }
     }
 
-    override fun connectToTradeUpdates() {
+    override fun connectToTradeSignals() {
         webSocketService.connect()
     }
 
-    override fun disconnectFromTradeUpdates() {
+    override fun disconnectFromTradeSignals() {
         webSocketService.disconnect()
     }
 
-    override fun getTradeUpdates(): Flow<String> {
-        return webSocketService.tradeUpdates
+    override fun getTradeSignals(): Flow<TradeSignal> {
+        return webSocketService.tradeSignals
     }
 
-    override fun sendTradeMessage(message: String) {
-        webSocketService.sendMessage(message)
+    companion object {
+        private const val TAG = "TradeRepositoryImpl"
     }
 } 

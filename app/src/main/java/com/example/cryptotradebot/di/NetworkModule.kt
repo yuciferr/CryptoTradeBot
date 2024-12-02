@@ -15,6 +15,7 @@ import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import java.util.concurrent.TimeUnit
 import javax.inject.Named
 import javax.inject.Singleton
 
@@ -57,6 +58,19 @@ object NetworkModule {
 
     @Provides
     @Singleton
+    @Named("wsClient")
+    fun provideWebSocketClient(): OkHttpClient {
+        return OkHttpClient.Builder()
+            .pingInterval(30, TimeUnit.SECONDS)
+            .connectTimeout(30, TimeUnit.SECONDS)
+            .readTimeout(30, TimeUnit.SECONDS)
+            .writeTimeout(30, TimeUnit.SECONDS)
+            .retryOnConnectionFailure(true)
+            .build()
+    }
+
+    @Provides
+    @Singleton
     @Named("binanceRetrofit")
     fun provideBinanceRetrofit(@Named("binanceClient") okHttpClient: OkHttpClient): Retrofit {
         return Retrofit.Builder()
@@ -93,6 +107,12 @@ object NetworkModule {
     @Singleton
     fun provideLiveTradeApi(@Named("tradeRetrofit") retrofit: Retrofit): LiveTradeApi {
         return retrofit.create(LiveTradeApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideTradeWebSocketService(@Named("wsClient") okHttpClient: OkHttpClient): TradeWebSocketService {
+        return TradeWebSocketService(okHttpClient)
     }
 
     @Provides
