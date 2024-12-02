@@ -1,10 +1,15 @@
 package com.example.cryptotradebot.data.remote.dto
 
+import com.google.gson.annotations.SerializedName
+
 data class BacktestRequest(
     val symbol: String,
     val timeframe: String,
+    @SerializedName("initial_balance")
     val initialBalance: Double = 10000.0,
+    @SerializedName("indicator_settings")
     val indicatorSettings: IndicatorSettings,
+    @SerializedName("risk_management")
     val riskManagement: RiskManagement? = null
 )
 
@@ -31,7 +36,9 @@ data class MACDSettings(
 data class BollingerSettings(
     val period: Int = 20,
     val std: Int = 2,
+    @SerializedName("window_dev")
     val windowDev: Int = 2,
+    @SerializedName("moving_avg")
     val movingAvg: String = "sma"
 )
 
@@ -45,6 +52,8 @@ data class EMASettings(
 )
 
 data class RiskManagement(
+    @SerializedName("stop_loss")
     val stopLoss: Double = 1.5,
+    @SerializedName("take_profit")
     val takeProfit: Double = 2.0
 ) 

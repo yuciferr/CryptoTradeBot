@@ -5,6 +5,7 @@ import com.example.cryptotradebot.data.remote.BacktestApi
 import com.example.cryptotradebot.data.remote.LiveTradeApi
 import com.example.cryptotradebot.data.remote.TradeWebSocketService
 import com.example.cryptotradebot.data.remote.dto.BacktestRequest
+import com.example.cryptotradebot.data.remote.dto.BacktestResponse
 import com.example.cryptotradebot.domain.model.TradeSignal
 import com.example.cryptotradebot.domain.repository.TradeRepository
 import kotlinx.coroutines.flow.Flow
@@ -18,13 +19,15 @@ class TradeRepositoryImpl @Inject constructor(
     private val webSocketService: TradeWebSocketService
 ) : TradeRepository {
 
-    override suspend fun runBacktest(request: BacktestRequest): Result<Map<String, Any>> {
+    override suspend fun runBacktest(request: BacktestRequest): Result<BacktestResponse> {
         return try {
             val response = backtestApi.runBacktest(request)
             if (response.isSuccessful) {
-                Result.success(response.body() ?: emptyMap())
+                response.body()?.let {
+                    Result.success(it)
+                } ?: Result.failure(Exception("Backtest yanıtı boş"))
             } else {
-                Result.failure(Exception("Backtest failed: ${response.code()}"))
+                Result.failure(Exception("Backtest başarısız: ${response.code()} - ${response.message()}"))
             }
         } catch (e: Exception) {
             Log.e(TAG, "Error running backtest", e)

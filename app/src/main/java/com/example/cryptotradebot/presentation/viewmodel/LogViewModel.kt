@@ -35,6 +35,7 @@ import kotlin.random.Random
 import com.google.gson.Gson
 import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.withTimeout
+import java.text.SimpleDateFormat
 
 sealed class LogUiState {
     object Loading : LogUiState()
@@ -239,54 +240,11 @@ class LogViewModel @Inject constructor(
                 _uiState.value = LogUiState.Loading
                 
                 try {
-                    // İndikatör ayarlarını dönüştür
-                    val indicatorSettings = IndicatorSettings(
-                        rsi = strategy.indicators.find { it.name == "RSI" }?.let { indicator ->
-                            val triggerValues = when (indicator.triggerCondition.type) {
-                                TriggerType.CROSSES_ABOVE, TriggerType.GREATER_THAN -> {
-                                    Pair(indicator.triggerCondition.value.toInt(), indicator.triggerCondition.compareValue?.toInt() ?: 30)
-                                }
-                                TriggerType.CROSSES_BELOW, TriggerType.LESS_THAN -> {
-                                    Pair(indicator.triggerCondition.compareValue?.toInt() ?: 70, indicator.triggerCondition.value.toInt())
-                                }
-                                else -> Pair(70, 30)
-                            }
-                            RSISettings(
-                                period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 14,
-                                overbought = triggerValues.first,
-                                oversold = triggerValues.second
-                            )
-                        },
-                        macd = strategy.indicators.find { it.name == "MACD" }?.let { indicator ->
-                            MACDSettings(
-                                fast = indicator.parameters.find { it.name == "Fast Period" }?.value?.toInt() ?: 12,
-                                slow = indicator.parameters.find { it.name == "Slow Period" }?.value?.toInt() ?: 26,
-                                signal = indicator.parameters.find { it.name == "Signal Period" }?.value?.toInt() ?: 9
-                            )
-                        },
-                        bollinger = strategy.indicators.find { it.name == "Bollinger" }?.let { indicator ->
-                            BollingerSettings(
-                                period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20,
-                                std = indicator.parameters.find { it.name == "Standard Deviation" }?.value?.toInt() ?: 2
-                            )
-                        },
-                        sma = strategy.indicators.find { it.name == "SMA" }?.let { indicator ->
-                            SMASettings(
-                                periods = listOf(indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20)
-                            )
-                        },
-                        ema = strategy.indicators.find { it.name == "EMA" }?.let { indicator ->
-                            EMASettings(
-                                periods = listOf(indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20)
-                            )
-                        }
-                    )
-
                     val request = BacktestRequest(
                         symbol = "${strategy.coin}USDT",
                         timeframe = strategy.timeframe,
                         initialBalance = strategy.tradeAmount?.toDouble() ?: 10000.0,
-                        indicatorSettings = indicatorSettings,
+                        indicatorSettings = createIndicatorSettings(strategy),
                         riskManagement = if (strategy.takeProfitPercentage != null || strategy.stopLossPercentage != null) {
                             RiskManagement(
                                 stopLoss = strategy.stopLossPercentage?.toDouble() ?: 1.5,
@@ -294,61 +252,32 @@ class LogViewModel @Inject constructor(
                             )
                         } else null
                     )
-                    lastRequest = request  // Son isteği kaydet
-
-                    android.util.Log.d("yuci_backtest", "Request: $request")
-                    android.util.Log.d("yuci_backtest", "Strategy: $strategy")
-                    android.util.Log.d("yuci_backtest", "IndicatorSettings: $indicatorSettings")
-                    android.util.Log.d("yuci_backtest", "RSI Trigger Condition: ${strategy.indicators.find { it.name == "RSI" }?.triggerCondition}")
+                    lastRequest = request
 
                     when (val result = runBacktestUseCase(request)) {
                         is Resource.Success -> {
-                            android.util.Log.d("yuci_backtest", "Success Response: ${result.data}")
-                            try {
-                                val trades = result.data?.get("trades") as? List<*>
-                                android.util.Log.d("yuci_backtest", "Trades List: $trades")
-                                
-                                if (trades == null) {
-                                    throw Exception("Trades verisi boş veya null")
+                            result.data?.let { response ->
+                                val tradeLogs = response.trades.map { trade ->
+                                    TradeLog(
+                                        id = UUID.randomUUID().toString(),
+                                        strategyId = strategy.id,
+                                        strategyName = strategy.name,
+                                        coin = strategy.coin,
+                                        type = if (trade.profitLoss >= 0) TradeType.SELL else TradeType.BUY,
+                                        price = trade.exitPrice,
+                                        amount = response.summary.initialBalance / trade.entryPrice,
+                                        total = trade.exitPrice * (response.summary.initialBalance / trade.entryPrice),
+                                        timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                            .parse(trade.exitTime)?.time ?: System.currentTimeMillis(),
+                                        profit = trade.profitPercentage,
+                                        isBacktest = true
+                                    )
                                 }
-
-                                val tradeLogs = trades.mapNotNull { trade ->
-                                    try {
-                                        @Suppress("UNCHECKED_CAST")
-                                        (trade as? Map<String, Any>)?.let { tradeMap ->
-                                            android.util.Log.d("yuci_backtest", "Processing trade: $tradeMap")
-                                            TradeLog(
-                                                id = tradeMap["id"]?.toString() ?: UUID.randomUUID().toString(),
-                                                strategyId = strategy.id,
-                                                strategyName = strategy.name,
-                                                coin = strategy.coin,
-                                                type = TradeType.valueOf((tradeMap["type"] as? String) ?: "BUY"),
-                                                price = (tradeMap["price"] as? Number)?.toDouble() ?: 0.0,
-                                                amount = (tradeMap["amount"] as? Number)?.toDouble() ?: 0.0,
-                                                total = (tradeMap["total"] as? Number)?.toDouble() ?: 0.0,
-                                                timestamp = (tradeMap["timestamp"] as? Number)?.toLong() ?: System.currentTimeMillis(),
-                                                profit = (tradeMap["profit"] as? Number)?.toDouble(),
-                                                isBacktest = true
-                                            )
-                                        }
-                                    } catch (e: Exception) {
-                                        android.util.Log.e("yuci_backtest", "Trade dönüştürme hatası: ${e.message}", e)
-                                        null
-                                    }
-                                }
-                                
-                                android.util.Log.d("yuci_backtest", "Processed TradeLog List: $tradeLogs")
                                 _backtestResults.value = tradeLogs
-                                _state.value = _state.value.copy(error = null)
-                                _uiState.value = LogUiState.Success(Unit)
-                                
-                            } catch (e: Exception) {
-                                android.util.Log.e("yuci_backtest", "Veri dönüştürme hatası: ${e.message}", e)
-                                _uiState.value = LogUiState.Error("Veri dönüştürme hatası: ${e.message}")
+                                _uiState.value = LogUiState.Success(response.summary)
                             }
                         }
                         is Resource.Error -> {
-                            android.util.Log.e("yuci_backtest", "Error: ${result.message}")
                             _uiState.value = LogUiState.Error(
                                 result.message ?: context.getString(R.string.error_backtest_failed)
                             )
@@ -358,7 +287,6 @@ class LogViewModel @Inject constructor(
                         }
                     }
                 } catch (e: Exception) {
-                    android.util.Log.e("yuci_backtest", "Genel hata: ${e.message}", e)
                     _uiState.value = LogUiState.Error(
                         "Backtest işlemi sırasında bir hata oluştu: ${e.message}"
                     )
@@ -369,6 +297,41 @@ class LogViewModel @Inject constructor(
         } ?: run {
             _uiState.value = LogUiState.Error(context.getString(R.string.error_no_strategy))
         }
+    }
+
+    private fun createIndicatorSettings(strategy: Strategy): IndicatorSettings {
+        return IndicatorSettings(
+            rsi = strategy.indicators.find { it.name == "RSI" }?.let { indicator ->
+                RSISettings(
+                    period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 14,
+                    overbought = 70,
+                    oversold = 30
+                )
+            },
+            macd = strategy.indicators.find { it.name == "MACD" }?.let { indicator ->
+                MACDSettings(
+                    fast = indicator.parameters.find { it.name == "Fast Period" }?.value?.toInt() ?: 12,
+                    slow = indicator.parameters.find { it.name == "Slow Period" }?.value?.toInt() ?: 26,
+                    signal = indicator.parameters.find { it.name == "Signal Period" }?.value?.toInt() ?: 9
+                )
+            },
+            bollinger = strategy.indicators.find { it.name == "Bollinger" }?.let { indicator ->
+                BollingerSettings(
+                    period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20,
+                    std = indicator.parameters.find { it.name == "Standard Deviation" }?.value?.toInt() ?: 2
+                )
+            },
+            sma = strategy.indicators.find { it.name == "SMA" }?.let { indicator ->
+                SMASettings(
+                    periods = listOf(indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20)
+                )
+            },
+            ema = strategy.indicators.find { it.name == "EMA" }?.let { indicator ->
+                EMASettings(
+                    periods = listOf(indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20)
+                )
+            }
+        )
     }
 
     fun retryLastRequest() {

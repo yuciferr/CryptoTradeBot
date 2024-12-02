@@ -1,6 +1,7 @@
 package com.example.cryptotradebot.domain.use_case.trade
 
 import com.example.cryptotradebot.data.remote.dto.BacktestRequest
+import com.example.cryptotradebot.data.remote.dto.BacktestResponse
 import com.example.cryptotradebot.domain.repository.TradeRepository
 import com.example.cryptotradebot.utils.Resource
 import javax.inject.Inject
@@ -8,7 +9,7 @@ import javax.inject.Inject
 class RunBacktestUseCase @Inject constructor(
     private val repository: TradeRepository
 ) {
-    suspend operator fun invoke(request: BacktestRequest): Resource<Map<String, Any>> {
+    suspend operator fun invoke(request: BacktestRequest): Resource<BacktestResponse> {
         return try {
             val result = repository.runBacktest(request)
             result.fold(

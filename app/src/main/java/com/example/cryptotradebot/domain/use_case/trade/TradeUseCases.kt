@@ -10,4 +10,4 @@ data class TradeUseCases @Inject constructor(
     val connectToTradeSignals: ConnectToTradeSignalsUseCase,
     val disconnectFromTradeSignals: DisconnectFromTradeSignalsUseCase,
     val getTradeSignals: GetTradeSignalsUseCase
-) 
+)
