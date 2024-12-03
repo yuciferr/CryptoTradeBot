@@ -1,7 +1,7 @@
 package com.example.cryptotradebot.domain.use_case.trade
 
-import com.example.cryptotradebot.data.remote.dto.BacktestRequest
-import com.example.cryptotradebot.data.remote.dto.BacktestResponse
+import com.example.cryptotradebot.data.remote.dto.request.BacktestRequest
+import com.example.cryptotradebot.data.remote.dto.response.BacktestResponse
 import com.example.cryptotradebot.domain.repository.TradeRepository
 import com.example.cryptotradebot.utils.Resource
 import javax.inject.Inject

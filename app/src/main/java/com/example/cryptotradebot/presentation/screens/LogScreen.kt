@@ -1,30 +1,64 @@
 package com.example.cryptotradebot.presentation.screens
 
-import androidx.compose.foundation.layout.*
+import WebSocketSignal
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Tab
+import androidx.compose.material3.TabRow
+import androidx.compose.material3.Text
+import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavController
 import com.example.cryptotradebot.R
-import com.example.cryptotradebot.domain.model.Candlestick
 import com.example.cryptotradebot.domain.model.TradeLog
 import com.example.cryptotradebot.domain.model.TradeType
-import com.example.cryptotradebot.presentation.composable.CryptoBottomNavigation
 import com.example.cryptotradebot.presentation.composable.CandlestickChart
 import com.example.cryptotradebot.presentation.viewmodel.LogUiState
 import com.example.cryptotradebot.presentation.viewmodel.LogViewModel
 import java.text.SimpleDateFormat
-import java.util.*
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -142,11 +176,17 @@ fun LogScreen(
                                     ) {
                                         Text(
                                             text = uiState.message,
-                                            color = MaterialTheme.colorScheme.error
+                                            color = MaterialTheme.colorScheme.error,
+                                            textAlign = TextAlign.Center,
+                                            modifier = Modifier.padding(bottom = 16.dp)
                                         )
-                                        Spacer(modifier = Modifier.height(16.dp))
-                                        Button(onClick = { viewModel.retryLastRequest() }) {
-                                            Text("Tekrar Dene")
+                                        Button(
+                                            onClick = { viewModel.retryLastRequest() },
+                                            colors = ButtonDefaults.buttonColors(
+                                                containerColor = MaterialTheme.colorScheme.primary
+                                            )
+                                        ) {
+                                            Text(stringResource(R.string.log_retry))
                                         }
                                     }
                                 }
@@ -385,167 +425,175 @@ private fun TradeLogItem(
     }
 }
 
-// Mock veriler
-private val mockTradeLogs = listOf(
-    TradeLog(
-        id = "1",
-        strategyId = "rsi_bb_btc_1h",
-        strategyName = "RSI + BB",
-        coin = "BTC",
-        type = TradeType.BUY,
-        price = 42150.0,
-        amount = 0.1,
-        total = 4215.0,
-        timestamp = System.currentTimeMillis(),
-        profit = null,
-        isBacktest = false
-    ),
-    TradeLog(
-        id = "2",
-        strategyId = "rsi_bb_btc_1h",
-        strategyName = "RSI + BB",
-        coin = "BTC",
-        type = TradeType.SELL,
-        price = 42950.0,
-        amount = 0.1,
-        total = 4295.0,
-        timestamp = System.currentTimeMillis() - 3600000,
-        profit = 1.89,
-        isBacktest = false
-    ),
-    // Daha fazla mock veri eklenebilir...
-)
-
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TradeLogCard(
-    log: TradeLog,
-    dateFormat: SimpleDateFormat,
-    modifier: Modifier = Modifier
+private fun LiveTradingSection(
+    viewModel: LogViewModel,
+    liveTradeState: LogViewModel.LiveTradeState,
+    tradeSignals: List<WebSocketSignal>
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surface
-        )
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(16.dp)
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp)
+        // Live Trading Status Card
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f)
+            )
         ) {
-            // Üst kısım - Coin ve işlem tipi
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
             ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                Text(
+                    text = stringResource(R.string.log_live_trading_status),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                
+                Spacer(modifier = Modifier.height(16.dp))
+                
+                when (liveTradeState) {
+                    is LogViewModel.LiveTradeState.Idle -> {
+                        Text(stringResource(R.string.log_live_trading_idle))
+                    }
+                    is LogViewModel.LiveTradeState.Loading -> {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(24.dp),
+                            strokeWidth = 2.dp
+                        )
+                    }
+                    is LogViewModel.LiveTradeState.Running -> {
+                        val status = liveTradeState.tradeResponse.status
+                        Column {
+                            LiveTradeStatusItem(
+                                title = stringResource(R.string.log_balance),
+                                value = stringResource(R.string.log_price_format, status.balance)
+                            )
+                            LiveTradeStatusItem(
+                                title = stringResource(R.string.log_profit_loss),
+                                value = stringResource(R.string.log_profit_format, status.profit_loss),
+                                valueColor = if (status.profit_loss >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                            )
+                            LiveTradeStatusItem(
+                                title = stringResource(R.string.log_total_trades),
+                                value = status.total_trades.toString()
+                            )
+                            LiveTradeStatusItem(
+                                title = stringResource(R.string.log_win_rate),
+                                value = stringResource(R.string.log_percentage_format, 
+                                    if (status.total_trades > 0) 
+                                        (status.winning_trades.toFloat() / status.total_trades) * 100 
+                                    else 0f
+                                )
+                            )
+                            status.current_position?.let { position ->
+                                LiveTradeStatusItem(
+                                    title = stringResource(R.string.log_current_position),
+                                    value = position
+                                )
+                            }
+                        }
+                    }
+                    is LogViewModel.LiveTradeState.Error -> {
+                        Text(
+                            text = liveTradeState.message,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Trade Signals Card
+        if (tradeSignals.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp)
                 ) {
                     Text(
-                        text = "${log.coin}/USDT",
+                        text = stringResource(R.string.log_trade_signals),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    AssistChip(
-                        onClick = { },
-                        label = { Text(log.strategyName) },
-                        colors = AssistChipDefaults.assistChipColors(
-                            labelColor = MaterialTheme.colorScheme.primary
-                        )
-                    )
-                }
-
-                AssistChip(
-                    onClick = { },
-                    label = { Text(if (log.type == TradeType.BUY) "ALIŞ" else "SATIŞ") },
-                    leadingIcon = {
-                        Icon(
-                            if (log.type == TradeType.BUY) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
-                            contentDescription = null,
-                            tint = if (log.type == TradeType.BUY) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
-                        )
-                    },
-                    colors = AssistChipDefaults.assistChipColors(
-                        labelColor = if (log.type == TradeType.BUY) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
-                    )
-                )
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Fiyat ve miktar bilgileri
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column {
-                    Text(
-                        text = "Fiyat",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = String.format("%.2f USDT", log.price),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-                Column(horizontalAlignment = Alignment.End) {
-                    Text(
-                        text = "Miktar",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = String.format("%.4f ${log.coin}", log.amount),
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            }
-
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Toplam ve kâr/zarar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text(
-                        text = "Toplam",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                    )
-                    Text(
-                        text = String.format("%.2f USDT", log.total),
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.Bold
-                    )
-                }
-
-                log.profit?.let { profit ->
-                    AssistChip(
-                        onClick = { },
-                        label = {
-                            Text(
-                                text = String.format("%+.2f%%", profit),
-                                color = if (profit >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
-                            )
+                    
+                    Spacer(modifier = Modifier.height(16.dp))
+                    
+                    LazyColumn {
+                        items(tradeSignals) { signal ->
+                            TradeSignalItem(signal = signal)
+                            Divider(modifier = Modifier.padding(vertical = 8.dp))
                         }
-                    )
+                    }
                 }
             }
+        }
+    }
+}
 
-            // Zaman
+@Composable
+private fun LiveTradeStatusItem(
+    title: String,
+    value: String,
+    valueColor: Color = MaterialTheme.colorScheme.onSurface
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium,
+            color = valueColor
+        )
+    }
+}
+
+@Composable
+private fun TradeSignalItem(signal: WebSocketSignal) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column {
             Text(
-                text = dateFormat.format(Date(log.timestamp)),
+                text = signal.signal.timestamp,
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
-                modifier = Modifier.padding(top = 8.dp)
+                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+            )
+            Text(
+                text = signal.signal.signal_type,
+                style = MaterialTheme.typography.bodyMedium,
+                color = when (signal.signal.signal_type.lowercase()) {
+                    "buy" -> Color(0xFF4CAF50)
+                    "sell" -> MaterialTheme.colorScheme.error
+                    else -> MaterialTheme.colorScheme.onSurface
+                }
             )
         }
+        Text(
+            text = stringResource(R.string.log_price_format, signal.signal.price),
+            style = MaterialTheme.typography.bodyMedium
+        )
     }
 }

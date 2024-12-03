@@ -152,6 +152,7 @@
     <string name="log_buy_format">BUY %.4f %s</string>
     <string name="log_sell_format">SELL %.4f %s</string>
     <string name="log_price_format">$ %.2f</string>
+    <string name="log_retry">Tekrar Dene</string>
 
     <!-- Strategy Screen -->
     <string name="strategy_save">Save Strategy</string>
@@ -189,4 +190,15 @@
     <string name="log_backtest_cancelled">Backtest iptal edildi</string>
     <string name="log_strategy_loaded">Strateji yüklendi: %s</string>
     <string name="log_strategy_unknown">Bilinmeyen Strateji</string>
+
+    <!-- Live Trading -->
+    <string name="log_live_trading_status">Live Trading Status</string>
+    <string name="log_live_trading_idle">Trading not started</string>
+    <string name="log_balance">Balance</string>
+    <string name="log_profit_loss">Profit/Loss</string>
+    <string name="log_current_position">Current Position</string>
+    <string name="log_trade_signals">Trade Signals</string>
+    <string name="error_live_trade_failed">Failed to start live trading</string>
+    <string name="error_stop_live_trade_failed">Failed to stop live trading</string>
+    <string name="error_live_trade_no_response">Live trading response is empty</string>
 </resources>

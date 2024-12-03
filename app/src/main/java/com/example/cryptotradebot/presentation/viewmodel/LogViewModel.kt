@@ -1,5 +1,8 @@
 package com.example.cryptotradebot.presentation.viewmodel
 
+import TradeRequest
+import TradeResponse
+import WebSocketSignal
 import android.content.Context
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
@@ -7,35 +10,39 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cryptotradebot.R
-import com.example.cryptotradebot.data.remote.dto.BacktestRequest
-import com.example.cryptotradebot.data.remote.dto.BollingerSettings
-import com.example.cryptotradebot.data.remote.dto.EMASettings
-import com.example.cryptotradebot.data.remote.dto.IndicatorSettings
-import com.example.cryptotradebot.data.remote.dto.MACDSettings
-import com.example.cryptotradebot.data.remote.dto.RSISettings
-import com.example.cryptotradebot.data.remote.dto.RiskManagement
-import com.example.cryptotradebot.data.remote.dto.SMASettings
-import com.example.cryptotradebot.domain.model.TradeLog
-import com.example.cryptotradebot.domain.model.TradeType
+import com.example.cryptotradebot.data.remote.dto.request.BacktestRequest
+import com.example.cryptotradebot.data.remote.dto.request.BollingerSettings
+import com.example.cryptotradebot.data.remote.dto.request.EMASettings
+import com.example.cryptotradebot.data.remote.dto.request.IndicatorSettings
+import com.example.cryptotradebot.data.remote.dto.request.MACDSettings
+import com.example.cryptotradebot.data.remote.dto.request.RSISettings
+import com.example.cryptotradebot.data.remote.dto.request.RiskManagement
+import com.example.cryptotradebot.data.remote.dto.request.SMASettings
 import com.example.cryptotradebot.domain.model.Candlestick
 import com.example.cryptotradebot.domain.model.Strategy
-import com.example.cryptotradebot.domain.model.TriggerType
+import com.example.cryptotradebot.domain.model.TradeLog
+import com.example.cryptotradebot.domain.model.TradeType
 import com.example.cryptotradebot.domain.use_case.GetCandlesticksUseCase
+import com.example.cryptotradebot.domain.use_case.trade.ConnectToTradeSignalsUseCase
+import com.example.cryptotradebot.domain.use_case.trade.DisconnectFromTradeSignalsUseCase
+import com.example.cryptotradebot.domain.use_case.trade.GetLiveTradeStatusUseCase
+import com.example.cryptotradebot.domain.use_case.trade.GetTradeSignalsUseCase
 import com.example.cryptotradebot.domain.use_case.trade.RunBacktestUseCase
+import com.example.cryptotradebot.domain.use_case.trade.StartLiveTradeUseCase
+import com.example.cryptotradebot.domain.use_case.trade.StopLiveTradeUseCase
 import com.example.cryptotradebot.utils.Resource
+import com.google.gson.Gson
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import java.util.*
-import javax.inject.Inject
-import kotlin.random.Random
-import com.google.gson.Gson
-import kotlinx.coroutines.TimeoutCancellationException
-import kotlinx.coroutines.withTimeout
 import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.UUID
+import javax.inject.Inject
 
 sealed class LogUiState {
     object Loading : LogUiState()
@@ -47,6 +54,12 @@ sealed class LogUiState {
 class LogViewModel @Inject constructor(
     private val getCandlesticksUseCase: GetCandlesticksUseCase,
     private val runBacktestUseCase: RunBacktestUseCase,
+    private val startLiveTradeUseCase: StartLiveTradeUseCase,
+    private val getLiveTradeStatusUseCase: GetLiveTradeStatusUseCase,
+    private val stopLiveTradeUseCase: StopLiveTradeUseCase,
+    private val connectToTradeSignalsUseCase: ConnectToTradeSignalsUseCase,
+    private val disconnectFromTradeSignalsUseCase: DisconnectFromTradeSignalsUseCase,
+    private val getTradeSignalsUseCase: GetTradeSignalsUseCase,
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle
 ) : ViewModel() {
@@ -68,6 +81,7 @@ class LogViewModel @Inject constructor(
 
     private var fetchJob: Job? = null
     private var backtestJob: Job? = null
+    private var isRetrying = false
     
     private var _selectedCoin = MutableStateFlow("BTC")
     val selectedCoin = _selectedCoin.asStateFlow()
@@ -79,6 +93,15 @@ class LogViewModel @Inject constructor(
     val uiState = _uiState.asStateFlow()
 
     private var lastRequest: BacktestRequest? = null
+
+    private val _liveTradeState = MutableStateFlow<LiveTradeState>(LiveTradeState.Idle)
+    val liveTradeState = _liveTradeState.asStateFlow()
+
+    private val _tradeSignals = MutableStateFlow<List<WebSocketSignal>>(emptyList())
+    val tradeSignals = _tradeSignals.asStateFlow()
+
+    private var liveTradeJob: Job? = null
+    private var signalCollectionJob: Job? = null
 
     init {
         savedStateHandle.get<String>("selectedStrategyId")?.let { strategyId ->
@@ -108,7 +131,7 @@ class LogViewModel @Inject constructor(
         } ?: run {
             android.util.Log.d("yuci", "LogViewModel - No StrategyJson received")
         }
-        loadMockData()
+
         getCandlesticks()
     }
 
@@ -158,51 +181,7 @@ class LogViewModel @Inject constructor(
         getCandlesticks()
     }
 
-    private fun loadMockData() {
-        val mockLogs = mutableListOf<TradeLog>()
-        val coins = listOf("BTC", "ETH", "SOL", "AVAX")
-        val strategies = listOf(
-            "Golden Cross", "RSI Divergence", "MACD Cross", "Bollinger Bounce"
-        )
 
-        // Son 24 saat için mock veriler
-        val currentTime = System.currentTimeMillis()
-        val oneDayAgo = currentTime - (24 * 60 * 60 * 1000)
-
-        repeat(20) { index ->
-            val timestamp = Random.nextLong(oneDayAgo, currentTime)
-            val coin = coins.random()
-            val price = when (coin) {
-                "BTC" -> Random.nextDouble(40000.0, 45000.0)
-                "ETH" -> Random.nextDouble(2000.0, 2500.0)
-                "SOL" -> Random.nextDouble(80.0, 100.0)
-                else -> Random.nextDouble(20.0, 30.0)
-            }
-            val amount = Random.nextDouble(0.1, 1.0)
-            val type = if (index % 2 == 0) TradeType.BUY else TradeType.SELL
-            val profit = if (type == TradeType.SELL) Random.nextDouble(-5.0, 15.0) else null
-
-            mockLogs.add(
-                TradeLog(
-                    id = UUID.randomUUID().toString(),
-                    strategyId = "strategy_${index % 4}",
-                    strategyName = strategies[index % 4],
-                    coin = coin,
-                    type = type,
-                    price = price,
-                    amount = amount,
-                    total = price * amount,
-                    timestamp = timestamp,
-                    isBacktest = Random.nextBoolean(),
-                    profit = profit
-                )
-            )
-        }
-
-        _state.value = _state.value.copy(
-            logs = mockLogs.sortedByDescending { it.timestamp }
-        )
-    }
 
     fun filterLogs(showBacktest: Boolean) {
         _state.value = _state.value.copy(
@@ -233,29 +212,37 @@ class LogViewModel @Inject constructor(
 
     fun startBacktest() {
         _strategy.value?.let { strategy ->
-            backtestJob?.cancel()
+            if (!isRetrying) {
+                backtestJob?.cancel()
+            }
             backtestJob = viewModelScope.launch {
-                _isBacktestRunning.value = true
-                _backtestResults.value = emptyList()
-                _uiState.value = LogUiState.Loading
-                
                 try {
-                    val request = BacktestRequest(
-                        symbol = "${strategy.coin}USDT",
-                        timeframe = strategy.timeframe,
-                        initialBalance = strategy.tradeAmount?.toDouble() ?: 10000.0,
-                        indicatorSettings = createIndicatorSettings(strategy),
-                        riskManagement = if (strategy.takeProfitPercentage != null || strategy.stopLossPercentage != null) {
-                            RiskManagement(
-                                stopLoss = strategy.stopLossPercentage?.toDouble() ?: 1.5,
-                                takeProfit = strategy.takeProfitPercentage?.toDouble() ?: 2.0
-                            )
-                        } else null
-                    )
-                    lastRequest = request
+                    if (!isRetrying) {
+                        _isBacktestRunning.value = true
+                        _backtestResults.value = emptyList()
+                        _uiState.value = LogUiState.Loading
+                    }
+                    
+                    val request = if (!isRetrying) {
+                        BacktestRequest(
+                            symbol = "${strategy.coin}USDT",
+                            timeframe = strategy.timeframe,
+                            initialBalance = strategy.tradeAmount?.toDouble() ?: 10000.0,
+                            indicatorSettings = createIndicatorSettings(strategy),
+                            riskManagement = if (strategy.takeProfitPercentage != null || strategy.stopLossPercentage != null) {
+                                RiskManagement(
+                                    stopLoss = strategy.stopLossPercentage?.toDouble() ?: 1.5,
+                                    takeProfit = strategy.takeProfitPercentage?.toDouble() ?: 2.0
+                                )
+                            } else null
+                        ).also { lastRequest = it }
+                    } else {
+                        lastRequest ?: throw IllegalStateException("No last request found")
+                    }
 
                     when (val result = runBacktestUseCase(request)) {
                         is Resource.Success -> {
+                            isRetrying = false
                             result.data?.let { response ->
                                 val tradeLogs = response.trades.map { trade ->
                                     TradeLog(
@@ -278,20 +265,40 @@ class LogViewModel @Inject constructor(
                             }
                         }
                         is Resource.Error -> {
-                            _uiState.value = LogUiState.Error(
-                                result.message ?: context.getString(R.string.error_backtest_failed)
-                            )
+                            if (!isRetrying && (result.message?.contains("timeout", ignoreCase = true) == true || 
+                                result.message?.contains("standaloneCoroutine was cancelled", ignoreCase = true) == true)) {
+                                _uiState.value = LogUiState.Loading
+                                isRetrying = true
+                                delay(1000)
+                                startBacktest()
+                            } else {
+                                isRetrying = false
+                                _uiState.value = LogUiState.Error(
+                                    result.message ?: context.getString(R.string.error_backtest_failed)
+                                )
+                            }
                         }
                         is Resource.Loading -> {
                             _uiState.value = LogUiState.Loading
                         }
                     }
                 } catch (e: Exception) {
-                    _uiState.value = LogUiState.Error(
-                        "Backtest işlemi sırasında bir hata oluştu: ${e.message}"
-                    )
+                    if (!isRetrying && (e.message?.contains("timeout", ignoreCase = true) == true || 
+                        e.message?.contains("standaloneCoroutine was cancelled", ignoreCase = true) == true)) {
+                        _uiState.value = LogUiState.Loading
+                        isRetrying = true
+                        delay(1000)
+                        startBacktest()
+                    } else {
+                        isRetrying = false
+                        _uiState.value = LogUiState.Error(
+                            "Backtest işlemi sırasında bir hata oluştu: ${e.message}"
+                        )
+                    }
                 } finally {
-                    _isBacktestRunning.value = false
+                    if (!isRetrying) {
+                        _isBacktestRunning.value = false
+                    }
                 }
             }
         } ?: run {
@@ -341,8 +348,108 @@ class LogViewModel @Inject constructor(
     }
 
     fun stopBacktest() {
+        isRetrying = false
         backtestJob?.cancel()
         _isBacktestRunning.value = false
+    }
+
+    fun startLiveTrading() {
+        _strategy.value?.let { strategy ->
+            liveTradeJob?.cancel()
+            liveTradeJob = viewModelScope.launch {
+                _liveTradeState.value = LiveTradeState.Loading
+                
+                try {
+                    val request = TradeRequest(
+                        symbol = "${strategy.coin}USDT",
+                        initial_balance = strategy.tradeAmount?.toDouble() ?: 10000.0,
+                        indicator_settings = createIndicatorSettings(strategy),
+                        risk_management = RiskManagement(
+                            stopLoss = strategy.stopLossPercentage?.toDouble() ?: 1.5,
+                            takeProfit = strategy.takeProfitPercentage?.toDouble() ?: 2.0
+                        )
+                    )
+
+                    when (val result = startLiveTradeUseCase(request)) {
+                        is Resource.Success -> {
+                            result.data?.let { response ->
+                                _liveTradeState.value = LiveTradeState.Running(response)
+                                connectToTradeSignals()
+                                startCollectingSignals()
+                            } ?: run {
+                                _liveTradeState.value = LiveTradeState.Error(
+                                    context.getString(R.string.error_live_trade_no_response)
+                                )
+                            }
+                        }
+                        is Resource.Error -> {
+                            _liveTradeState.value = LiveTradeState.Error(
+                                result.message ?: context.getString(R.string.error_live_trade_failed)
+                            )
+                        }
+                        is Resource.Loading -> {
+                            _liveTradeState.value = LiveTradeState.Loading
+                        }
+                    }
+                } catch (e: Exception) {
+                    _liveTradeState.value = LiveTradeState.Error(
+                        "Live trade başlatılırken hata oluştu: ${e.message}"
+                    )
+                }
+            }
+        } ?: run {
+            _liveTradeState.value = LiveTradeState.Error(context.getString(R.string.error_no_strategy))
+        }
+    }
+
+    fun stopLiveTrading() {
+        liveTradeJob?.cancel()
+        viewModelScope.launch {
+            try {
+                when (val result = stopLiveTradeUseCase()) {
+                    is Resource.Success -> {
+                        disconnectFromTradeSignals()
+                        _liveTradeState.value = LiveTradeState.Idle
+                        _tradeSignals.value = emptyList()
+                    }
+                    is Resource.Error -> {
+                        _liveTradeState.value = LiveTradeState.Error(
+                            result.message ?: context.getString(R.string.error_stop_live_trade_failed)
+                        )
+                    }
+                    is Resource.Loading -> {
+                        _liveTradeState.value = LiveTradeState.Loading
+                    }
+                }
+            } catch (e: Exception) {
+                _liveTradeState.value = LiveTradeState.Error(
+                    "Live trade durdurulurken hata oluştu: ${e.message}"
+                )
+            }
+        }
+    }
+
+    private fun connectToTradeSignals() {
+        connectToTradeSignalsUseCase()
+    }
+
+    private fun disconnectFromTradeSignals() {
+        disconnectFromTradeSignalsUseCase()
+        signalCollectionJob?.cancel()
+    }
+
+    private fun startCollectingSignals() {
+        signalCollectionJob?.cancel()
+        signalCollectionJob = viewModelScope.launch {
+            getTradeSignalsUseCase().collect { signal ->
+                _tradeSignals.value = _tradeSignals.value + signal
+            }
+        }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        disconnectFromTradeSignals()
     }
 
     data class LogState(
@@ -381,5 +488,12 @@ class LogViewModel @Inject constructor(
             successRate = successRate,
             averageProfit = averageProfit
         )
+    }
+
+    sealed class LiveTradeState {
+        object Idle : LiveTradeState()
+        object Loading : LiveTradeState()
+        data class Running(val tradeResponse: TradeResponse) : LiveTradeState()
+        data class Error(val message: String) : LiveTradeState()
     }
 } 

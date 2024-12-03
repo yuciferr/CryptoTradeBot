@@ -1,4 +1,4 @@
-package com.example.cryptotradebot.data.remote.dto
+package com.example.cryptotradebot.data.remote.dto.response
 
 import com.google.gson.annotations.SerializedName
 

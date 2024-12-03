@@ -31,6 +31,18 @@ object NetworkModule {
         }
     }
 
+    @Singleton
+    @Provides
+    fun provideOkHttpClient(loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
+        return OkHttpClient.Builder()
+            .retryOnConnectionFailure(true)
+            .connectTimeout(0, TimeUnit.MILLISECONDS)
+            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .writeTimeout(0, TimeUnit.MILLISECONDS)
+            .addInterceptor(loggingInterceptor)
+            .build()
+    }
+
     @Provides
     @Singleton
     @Named("binanceClient")
@@ -44,6 +56,7 @@ object NetworkModule {
                 chain.proceed(request)
             }
             .addInterceptor(loggingInterceptor)
+            .retryOnConnectionFailure(true)
             .build()
     }
 
@@ -53,6 +66,10 @@ object NetworkModule {
     fun provideTradeHttpClient(loggingInterceptor: HttpLoggingInterceptor): OkHttpClient {
         return OkHttpClient.Builder()
             .addInterceptor(loggingInterceptor)
+            .retryOnConnectionFailure(true)
+            .connectTimeout(0, TimeUnit.MILLISECONDS)
+            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .writeTimeout(0, TimeUnit.MILLISECONDS)
             .build()
     }
 
@@ -61,11 +78,10 @@ object NetworkModule {
     @Named("wsClient")
     fun provideWebSocketClient(): OkHttpClient {
         return OkHttpClient.Builder()
-            .pingInterval(30, TimeUnit.SECONDS)
-            .connectTimeout(30, TimeUnit.SECONDS)
-            .readTimeout(30, TimeUnit.SECONDS)
-            .writeTimeout(30, TimeUnit.SECONDS)
             .retryOnConnectionFailure(true)
+            .connectTimeout(0, TimeUnit.MILLISECONDS)
+            .readTimeout(0, TimeUnit.MILLISECONDS)
+            .writeTimeout(0, TimeUnit.MILLISECONDS)
             .build()
     }
 

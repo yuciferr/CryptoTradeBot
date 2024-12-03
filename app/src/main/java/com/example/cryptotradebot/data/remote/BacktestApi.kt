@@ -1,7 +1,7 @@
 package com.example.cryptotradebot.data.remote
 
-import com.example.cryptotradebot.data.remote.dto.BacktestRequest
-import com.example.cryptotradebot.data.remote.dto.BacktestResponse
+import com.example.cryptotradebot.data.remote.dto.request.BacktestRequest
+import com.example.cryptotradebot.data.remote.dto.response.BacktestResponse
 import retrofit2.Response
 import retrofit2.http.Body
 import retrofit2.http.POST

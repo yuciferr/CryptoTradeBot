@@ -1,4 +1,4 @@
-package com.example.cryptotradebot.data.remote.dto
+package com.example.cryptotradebot.data.remote.dto.request
 
 import com.google.gson.annotations.SerializedName
 
@@ -18,7 +18,10 @@ data class IndicatorSettings(
     val macd: MACDSettings? = null,
     val bollinger: BollingerSettings? = null,
     val sma: SMASettings? = null,
-    val ema: EMASettings? = null
+    val ema: EMASettings? = null,
+    val cci: CCISettings? = null,
+    val adx: ADXSettings? = null,
+    val supertrend: SupertrendSettings? = null
 )
 
 data class RSISettings(
@@ -49,6 +52,22 @@ data class SMASettings(
 data class EMASettings(
     val periods: List<Int> = listOf(20),
     val smoothing: Int = 2
+)
+
+data class CCISettings(
+    val period: Int = 20,
+    val oversold: Int = -100,
+    val overbought: Int = 100
+)
+
+data class ADXSettings(
+    val period: Int = 14,
+    val threshold: Int = 25
+)
+
+data class SupertrendSettings(
+    val period: Int = 10,
+    val multiplier: Int = 3
 )
 
 data class RiskManagement(
