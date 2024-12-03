@@ -354,21 +354,20 @@ class LogViewModel @Inject constructor(
     }
 
     fun startLiveTrading() {
-        _strategy.value?.let { strategy ->
-            liveTradeJob?.cancel()
-            liveTradeJob = viewModelScope.launch {
-                _liveTradeState.value = LiveTradeState.Loading
-                
+        strategy.value?.let { currentStrategy ->
+            viewModelScope.launch {
                 try {
                     val request = TradeRequest(
-                        symbol = "${strategy.coin}USDT",
-                        initial_balance = strategy.tradeAmount?.toDouble() ?: 10000.0,
-                        indicator_settings = createIndicatorSettings(strategy),
+                        symbol = "${selectedCoin.value}USDT",
+                        initial_balance = currentStrategy.tradeAmount?.toDouble() ?: 10000.0,
+                        indicator_settings = createIndicatorSettings(currentStrategy),
                         risk_management = RiskManagement(
-                            stopLoss = strategy.stopLossPercentage?.toDouble() ?: 1.5,
-                            takeProfit = strategy.takeProfitPercentage?.toDouble() ?: 2.0
+                            stopLoss = currentStrategy.stopLossPercentage?.toDouble() ?: 1.5,
+                            takeProfit = currentStrategy.takeProfitPercentage?.toDouble() ?: 2.0
                         )
                     )
+
+                    _liveTradeState.value = LiveTradeState.Loading
 
                     when (val result = startLiveTradeUseCase(request)) {
                         is Resource.Success -> {
@@ -403,9 +402,10 @@ class LogViewModel @Inject constructor(
     }
 
     fun stopLiveTrading() {
-        liveTradeJob?.cancel()
         viewModelScope.launch {
             try {
+                _liveTradeState.value = LiveTradeState.Loading
+                
                 when (val result = stopLiveTradeUseCase()) {
                     is Resource.Success -> {
                         disconnectFromTradeSignals()

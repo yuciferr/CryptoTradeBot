@@ -97,6 +97,10 @@ fun LogScreen(
         }
     }
 
+    // Live trade state'ini collect et
+    val liveTradeState by viewModel.liveTradeState.collectAsState()
+    val tradeSignals by viewModel.tradeSignals.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
@@ -208,27 +212,179 @@ fun LogScreen(
                     if (selectedTabIndex == 0) {
                         // Live Trading Button
                         Button(
-                            onClick = { isLiveRunning = !isLiveRunning },
+                            onClick = {
+                                if (liveTradeState is LogViewModel.LiveTradeState.Running) {
+                                    viewModel.stopLiveTrading()
+                                } else {
+                                    viewModel.startLiveTrading()
+                                }
+                            },
                             colors = ButtonDefaults.buttonColors(
-                                containerColor = if (isLiveRunning)
+                                containerColor = if (liveTradeState is LogViewModel.LiveTradeState.Running)
                                     MaterialTheme.colorScheme.error
                                 else
                                     MaterialTheme.colorScheme.primary
                             ),
-                            modifier = Modifier.fillMaxWidth()
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = liveTradeState !is LogViewModel.LiveTradeState.Loading
                         ) {
-                            Icon(
-                                if (isLiveRunning) Icons.Default.Clear else Icons.Default.PlayArrow,
-                                contentDescription = null,
-                                modifier = Modifier.size(20.dp)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                if (isLiveRunning)
-                                    stringResource(R.string.log_stop)
-                                else
-                                    stringResource(R.string.log_start)
-                            )
+                            if (liveTradeState is LogViewModel.LiveTradeState.Loading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(24.dp),
+                                    color = MaterialTheme.colorScheme.onPrimary
+                                )
+                            } else {
+                                Icon(
+                                    if (liveTradeState is LogViewModel.LiveTradeState.Running)
+                                        Icons.Default.Clear
+                                    else
+                                        Icons.Default.PlayArrow,
+                                    contentDescription = null
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(
+                                    if (liveTradeState is LogViewModel.LiveTradeState.Running)
+                                        stringResource(R.string.log_stop)
+                                    else
+                                        stringResource(R.string.log_start)
+                                )
+                            }
+                        }
+
+                        // Live Trade Status
+                        when (liveTradeState) {
+                            is LogViewModel.LiveTradeState.Running -> {
+                                val status = (liveTradeState as LogViewModel.LiveTradeState.Running).tradeResponse
+                                Card(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 8.dp),
+                                    colors = CardDefaults.cardColors(
+                                        containerColor = MaterialTheme.colorScheme.primaryContainer
+                                    )
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(16.dp)
+                                    ) {
+                                        Text(
+                                            text = stringResource(R.string.log_live_trade_status),
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.Bold
+                                        )
+                                        Spacer(modifier = Modifier.height(8.dp))
+                                        
+                                        // Session ID
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_session_id),
+                                            value = status.session_id.toString()
+                                        )
+                                        
+                                        // Message
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_status),
+                                            value = status.message
+                                        )
+                                        
+                                        // Running Status
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_is_running),
+                                            value = if (status.status.is_running) "Active" else "Inactive",
+                                            valueColor = if (status.status.is_running) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                                        )
+                                        
+                                        // Balance
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_balance),
+                                            value = stringResource(R.string.log_balance_value, status.status.balance)
+                                        )
+                                        
+                                        // Profit/Loss
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_profit_loss),
+                                            value = stringResource(R.string.log_profit_loss_value, status.status.profit_loss_percentage),
+                                            valueColor = if (status.status.profit_loss >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                                        )
+                                        
+                                        // Total Trades
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_total_trades),
+                                            value = status.status.total_trades.toString()
+                                        )
+                                        
+                                        // Winning Trades
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_winning_trades),
+                                            value = status.status.winning_trades.toString()
+                                        )
+                                        
+                                        // Win Rate
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_win_rate),
+                                            value = stringResource(
+                                                R.string.log_percentage_format,
+                                                if (status.status.total_trades > 0)
+                                                    (status.status.winning_trades.toFloat() / status.status.total_trades) * 100
+                                                else 0f
+                                            )
+                                        )
+                                        
+                                        // Current Position
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_current_position),
+                                            value = status.status.current_position?.let { pos ->
+                                                stringResource(R.string.log_position_value, pos, status.status.last_price)
+                                            } ?: "-"
+                                        )
+                                        
+                                        // Last Update
+                                        LiveTradeStatusItem(
+                                            title = stringResource(R.string.log_last_update),
+                                            value = status.status.last_update
+                                        )
+                                    }
+                                }
+                            }
+                            is LogViewModel.LiveTradeState.Error -> {
+                                Text(
+                                    text = (liveTradeState as LogViewModel.LiveTradeState.Error).message,
+                                    color = MaterialTheme.colorScheme.error,
+                                    modifier = Modifier.padding(vertical = 8.dp)
+                                )
+                            }
+                            else -> {}
+                        }
+
+                        // Trade Signals
+                        if (tradeSignals.isNotEmpty()) {
+                            Card(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(vertical = 8.dp),
+                                colors = CardDefaults.cardColors(
+                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
+                                )
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.log_trade_signals),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold
+                                    )
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    LazyColumn {
+                                        items(tradeSignals) { signal ->
+                                            TradeSignalItem(signal = signal)
+                                            Divider(modifier = Modifier.padding(vertical = 4.dp))
+                                        }
+                                    }
+                                }
+                            }
                         }
                     } else {
                         // Backtest Button
@@ -426,124 +582,6 @@ private fun TradeLogItem(
 }
 
 @Composable
-private fun LiveTradingSection(
-    viewModel: LogViewModel,
-    liveTradeState: LogViewModel.LiveTradeState,
-    tradeSignals: List<WebSocketSignal>
-) {
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(16.dp)
-    ) {
-        // Live Trading Status Card
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f)
-            )
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(16.dp)
-            ) {
-                Text(
-                    text = stringResource(R.string.log_live_trading_status),
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                
-                Spacer(modifier = Modifier.height(16.dp))
-                
-                when (liveTradeState) {
-                    is LogViewModel.LiveTradeState.Idle -> {
-                        Text(stringResource(R.string.log_live_trading_idle))
-                    }
-                    is LogViewModel.LiveTradeState.Loading -> {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(24.dp),
-                            strokeWidth = 2.dp
-                        )
-                    }
-                    is LogViewModel.LiveTradeState.Running -> {
-                        val status = liveTradeState.tradeResponse.status
-                        Column {
-                            LiveTradeStatusItem(
-                                title = stringResource(R.string.log_balance),
-                                value = stringResource(R.string.log_price_format, status.balance)
-                            )
-                            LiveTradeStatusItem(
-                                title = stringResource(R.string.log_profit_loss),
-                                value = stringResource(R.string.log_profit_format, status.profit_loss),
-                                valueColor = if (status.profit_loss >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
-                            )
-                            LiveTradeStatusItem(
-                                title = stringResource(R.string.log_total_trades),
-                                value = status.total_trades.toString()
-                            )
-                            LiveTradeStatusItem(
-                                title = stringResource(R.string.log_win_rate),
-                                value = stringResource(R.string.log_percentage_format, 
-                                    if (status.total_trades > 0) 
-                                        (status.winning_trades.toFloat() / status.total_trades) * 100 
-                                    else 0f
-                                )
-                            )
-                            status.current_position?.let { position ->
-                                LiveTradeStatusItem(
-                                    title = stringResource(R.string.log_current_position),
-                                    value = position
-                                )
-                            }
-                        }
-                    }
-                    is LogViewModel.LiveTradeState.Error -> {
-                        Text(
-                            text = liveTradeState.message,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Trade Signals Card
-        if (tradeSignals.isNotEmpty()) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f)
-                )
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp)
-                ) {
-                    Text(
-                        text = stringResource(R.string.log_trade_signals),
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    
-                    Spacer(modifier = Modifier.height(16.dp))
-                    
-                    LazyColumn {
-                        items(tradeSignals) { signal ->
-                            TradeSignalItem(signal = signal)
-                            Divider(modifier = Modifier.padding(vertical = 8.dp))
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun LiveTradeStatusItem(
     title: String,
     value: String,
@@ -577,7 +615,7 @@ private fun TradeSignalItem(signal: WebSocketSignal) {
     ) {
         Column {
             Text(
-                text = signal.signal.timestamp,
+                text = stringResource(R.string.log_signal_time, signal.signal.timestamp),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
             )
@@ -592,7 +630,7 @@ private fun TradeSignalItem(signal: WebSocketSignal) {
             )
         }
         Text(
-            text = stringResource(R.string.log_price_format, signal.signal.price),
+            text = stringResource(R.string.log_signal_price, signal.signal.price),
             style = MaterialTheme.typography.bodyMedium
         )
     }
