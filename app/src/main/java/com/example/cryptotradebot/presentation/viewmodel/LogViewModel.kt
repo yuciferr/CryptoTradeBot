@@ -311,8 +311,8 @@ class LogViewModel @Inject constructor(
             rsi = strategy.indicators.find { it.name == "RSI" }?.let { indicator ->
                 RSISettings(
                     period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 14,
-                    overbought = 70,
-                    oversold = 30
+                    overbought = indicator.triggerCondition.compareValue?.toInt() ?: 70,
+                    oversold = indicator.triggerCondition.value.toInt()
                 )
             },
             macd = strategy.indicators.find { it.name == "MACD" }?.let { indicator ->

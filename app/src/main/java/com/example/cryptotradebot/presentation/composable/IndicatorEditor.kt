@@ -19,6 +19,15 @@ import com.example.cryptotradebot.domain.model.IndicatorList
 import com.example.cryptotradebot.domain.model.TriggerCondition
 import com.example.cryptotradebot.domain.model.TriggerType
 
+private val activeIndicators = setOf(
+    "RSI",
+    "MACD",
+    "Bollinger Bands",
+    "CCI",
+    "SuperTrend",
+    "ADX"
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun IndicatorEditor(
@@ -151,20 +160,46 @@ fun IndicatorEditor(
                     IndicatorList.availableIndicators
                         .filter { it.category == category }
                         .forEach { indicator ->
+                            val isActive = activeIndicators.contains(indicator.name)
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
-                                        onAddIndicator(indicator)
-                                        showIndicatorSelector = false
-                                    },
+                                    .then(
+                                        if (isActive) {
+                                            Modifier.clickable {
+                                                onAddIndicator(indicator)
+                                                showIndicatorSelector = false
+                                            }
+                                        } else {
+                                            Modifier
+                                        }
+                                    ),
                                 color = MaterialTheme.colorScheme.surface
                             ) {
-                                Text(
-                                    text = indicator.name,
-                                    style = MaterialTheme.typography.bodyLarge,
-                                    modifier = Modifier.padding(16.dp)
-                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text(
+                                        text = indicator.name,
+                                        style = MaterialTheme.typography.bodyLarge,
+                                        color = if (isActive) {
+                                            MaterialTheme.colorScheme.onSurface
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                        }
+                                    )
+                                    if (!isActive) {
+                                        Text(
+                                            text = "(In progress)",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f)
+                                        )
+                                    }
+                                }
                             }
                         }
                 }
