@@ -4,6 +4,7 @@ import TradeRequest
 import TradeResponse
 import WebSocketSignal
 import android.content.Context
+import android.util.Log
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.SavedStateHandle
@@ -18,6 +19,7 @@ import com.example.cryptotradebot.data.remote.dto.request.MACDSettings
 import com.example.cryptotradebot.data.remote.dto.request.RSISettings
 import com.example.cryptotradebot.data.remote.dto.request.RiskManagement
 import com.example.cryptotradebot.data.remote.dto.request.SMASettings
+import com.example.cryptotradebot.data.remote.dto.request.SupertrendSettings
 import com.example.cryptotradebot.domain.model.Candlestick
 import com.example.cryptotradebot.domain.model.Strategy
 import com.example.cryptotradebot.domain.model.TradeLog
@@ -322,10 +324,18 @@ class LogViewModel @Inject constructor(
                     signal = indicator.parameters.find { it.name == "Signal Period" }?.value?.toInt() ?: 9
                 )
             },
-            bollinger = strategy.indicators.find { it.name == "Bollinger" }?.let { indicator ->
+            bollinger = strategy.indicators.find { it.name == "Bollinger Bands" }?.let { indicator ->
                 BollingerSettings(
                     period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20,
-                    std = indicator.parameters.find { it.name == "Standard Deviation" }?.value?.toInt() ?: 2
+                    std = indicator.parameters.find { it.name == "Upper Deviation" }?.value?.toDouble() ?: 2.0,
+                    windowDev = indicator.parameters.find { it.name == "Lower Deviation" }?.value?.toDouble() ?: 2.0,
+                    movingAvg = "sma"
+                )
+            },
+            supertrend = strategy.indicators.find { it.name == "SuperTrend" }?.let { indicator ->
+                SupertrendSettings(
+                    period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 7,
+                    multiplier = indicator.parameters.find { it.name == "Multiplier" }?.value?.toDouble() ?: 0.8
                 )
             },
             sma = strategy.indicators.find { it.name == "SMA" }?.let { indicator ->
@@ -357,6 +367,7 @@ class LogViewModel @Inject constructor(
         strategy.value?.let { currentStrategy ->
             viewModelScope.launch {
                 try {
+                    Log.d(TAG, "Canlı trade başlatılıyor...")
                     val request = TradeRequest(
                         symbol = "${selectedCoin.value}USDT",
                         initial_balance = currentStrategy.tradeAmount?.toDouble() ?: 10000.0,
@@ -366,11 +377,13 @@ class LogViewModel @Inject constructor(
                             takeProfit = currentStrategy.takeProfitPercentage?.toDouble() ?: 2.0
                         )
                     )
-
+                    Log.d(TAG, "Trade isteği oluşturuldu: $request")
+                    
                     _liveTradeState.value = LiveTradeState.Loading
 
                     when (val result = startLiveTradeUseCase(request)) {
                         is Resource.Success -> {
+                            Log.d(TAG, "Canlı trade başarıyla başlatıldı")
                             result.data?.let { response ->
                                 _liveTradeState.value = LiveTradeState.Running(response)
                                 connectToTradeSignals()
@@ -382,6 +395,7 @@ class LogViewModel @Inject constructor(
                             }
                         }
                         is Resource.Error -> {
+                            Log.e(TAG, "Canlı trade başlatma hatası: ${result.message}")
                             _liveTradeState.value = LiveTradeState.Error(
                                 result.message ?: context.getString(R.string.error_live_trade_failed)
                             )
@@ -391,6 +405,7 @@ class LogViewModel @Inject constructor(
                         }
                     }
                 } catch (e: Exception) {
+                    Log.e(TAG, "Canlı trade başlatma exception: ", e)
                     _liveTradeState.value = LiveTradeState.Error(
                         "Live trade başlatılırken hata oluştu: ${e.message}"
                     )
@@ -430,10 +445,12 @@ class LogViewModel @Inject constructor(
     }
 
     private fun connectToTradeSignals() {
+        Log.d(TAG, "WebSocket bağlantısı başlatılıyor")
         connectToTradeSignalsUseCase()
     }
 
     private fun disconnectFromTradeSignals() {
+        Log.d(TAG, "WebSocket bağlantısı kapatılıyor")
         disconnectFromTradeSignalsUseCase()
         signalCollectionJob?.cancel()
     }
@@ -441,7 +458,9 @@ class LogViewModel @Inject constructor(
     private fun startCollectingSignals() {
         signalCollectionJob?.cancel()
         signalCollectionJob = viewModelScope.launch {
+            Log.d(TAG, "Sinyal toplama başlatıldı")
             getTradeSignalsUseCase().collect { signal ->
+                Log.d(TAG, "Yeni sinyal alındı: $signal")
                 _tradeSignals.value = _tradeSignals.value + signal
             }
         }
@@ -495,5 +514,9 @@ class LogViewModel @Inject constructor(
         object Loading : LiveTradeState()
         data class Running(val tradeResponse: TradeResponse) : LiveTradeState()
         data class Error(val message: String) : LiveTradeState()
+    }
+
+    companion object {
+        private const val TAG = "CryptoTradeBot/Log"
     }
 } 

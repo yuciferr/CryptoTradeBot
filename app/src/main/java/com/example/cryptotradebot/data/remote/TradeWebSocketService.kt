@@ -20,17 +20,17 @@ class TradeWebSocketService @Inject constructor(
     val tradeSignals: Flow<WebSocketSignal> = _tradeSignals
 
     fun connect() {
-        val request = Request.Builder()
-            .url("ws://localhost:8000/ws/trade_signals/")
-            .build()
-
-        webSocket = okHttpClient.newWebSocket(request, object : WebSocketListener() {
+        webSocket = okHttpClient.newWebSocket(Request.Builder()
+            .url("ws://10.0.2.2:8000/ws/trade_signals/")
+            .build(), object : WebSocketListener() {
+            
             override fun onOpen(webSocket: WebSocket, response: Response) {
-                Log.d(TAG, "WebSocket Connection opened")
+                Log.d(TAG, "WebSocket bağlantısı açıldı")
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 try {
+                    Log.d(TAG, "WebSocket mesajı alındı: $text")
                     val signal = gson.fromJson(text, WebSocketSignal::class.java)
                     _tradeSignals.tryEmit(signal)
                 } catch (e: Exception) {
@@ -39,7 +39,7 @@ class TradeWebSocketService @Inject constructor(
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
-                Log.e(TAG, "WebSocket Connection failure", t)
+                Log.e(TAG, "WebSocket bağlantı hatası: ${t.message}", t)
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {

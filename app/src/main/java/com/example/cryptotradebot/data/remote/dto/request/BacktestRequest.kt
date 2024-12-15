@@ -38,9 +38,9 @@ data class MACDSettings(
 
 data class BollingerSettings(
     val period: Int = 20,
-    val std: Int = 2,
+    val std: Double = 2.0,
     @SerializedName("window_dev")
-    val windowDev: Int = 2,
+    val windowDev: Double = 2.0,
     @SerializedName("moving_avg")
     val movingAvg: String = "sma"
 )
@@ -67,7 +67,7 @@ data class ADXSettings(
 
 data class SupertrendSettings(
     val period: Int = 10,
-    val multiplier: Int = 3
+    val multiplier: Double = 3.0
 )
 
 data class RiskManagement(

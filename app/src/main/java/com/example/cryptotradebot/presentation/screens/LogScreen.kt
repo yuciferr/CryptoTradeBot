@@ -1,6 +1,7 @@
 package com.example.cryptotradebot.presentation.screens
 
 import WebSocketSignal
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -362,9 +364,6 @@ fun LogScreen(
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(vertical = 8.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = MaterialTheme.colorScheme.secondaryContainer
-                                )
                             ) {
                                 Column(
                                     modifier = Modifier
@@ -377,8 +376,11 @@ fun LogScreen(
                                         fontWeight = FontWeight.Bold
                                     )
                                     Spacer(modifier = Modifier.height(8.dp))
-                                    LazyColumn {
+                                    LazyColumn(
+                                        modifier = Modifier.heightIn(max = 200.dp)
+                                    ) {
                                         items(tradeSignals) { signal ->
+                                            Log.d("CryptoTradeBot/Log", "Sinyal görüntüleniyor: $signal")
                                             TradeSignalItem(signal = signal)
                                             Divider(modifier = Modifier.padding(vertical = 4.dp))
                                         }
