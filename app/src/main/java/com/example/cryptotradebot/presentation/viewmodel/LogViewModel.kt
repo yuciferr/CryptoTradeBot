@@ -2,6 +2,7 @@ package com.example.cryptotradebot.presentation.viewmodel
 
 import TradeRequest
 import TradeResponse
+import TradeStatus
 import WebSocketSignal
 import android.content.Context
 import android.util.Log
@@ -11,6 +12,7 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cryptotradebot.R
+import com.example.cryptotradebot.data.remote.TradeWebSocketService
 import com.example.cryptotradebot.data.remote.dto.request.BacktestRequest
 import com.example.cryptotradebot.data.remote.dto.request.BollingerSettings
 import com.example.cryptotradebot.data.remote.dto.request.EMASettings
@@ -40,6 +42,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
@@ -63,7 +66,8 @@ class LogViewModel @Inject constructor(
     private val disconnectFromTradeSignalsUseCase: DisconnectFromTradeSignalsUseCase,
     private val getTradeSignalsUseCase: GetTradeSignalsUseCase,
     @ApplicationContext private val context: Context,
-    savedStateHandle: SavedStateHandle
+    savedStateHandle: SavedStateHandle,
+    private val tradeWebSocketService: TradeWebSocketService
 ) : ViewModel() {
 
     private val _state = mutableStateOf(LogState())
@@ -99,11 +103,16 @@ class LogViewModel @Inject constructor(
     private val _liveTradeState = MutableStateFlow<LiveTradeState>(LiveTradeState.Idle)
     val liveTradeState = _liveTradeState.asStateFlow()
 
-    private val _tradeSignals = MutableStateFlow<List<WebSocketSignal>>(emptyList())
-    val tradeSignals = _tradeSignals.asStateFlow()
+    private val _tradeSignals = mutableStateOf<List<WebSocketSignal>>(emptyList())
+    val tradeSignals: State<List<WebSocketSignal>> = _tradeSignals
 
     private var liveTradeJob: Job? = null
     private var signalCollectionJob: Job? = null
+
+    private var updateJob: Job? = null
+
+    private val _logs = MutableStateFlow<List<WebSocketSignal>>(emptyList())
+    val logs = _logs.asStateFlow()
 
     init {
         savedStateHandle.get<String>("selectedStrategyId")?.let { strategyId ->
@@ -135,6 +144,14 @@ class LogViewModel @Inject constructor(
         }
 
         getCandlesticks()
+
+        viewModelScope.launch {
+            tradeWebSocketService.tradeSignals.collect { signal ->
+                _logs.update { currentLogs ->
+                    (currentLogs + signal).sortedBy { it.message.signal.timestamp }
+                }
+            }
+        }
     }
 
     private fun getCandlesticks() {
@@ -388,6 +405,7 @@ class LogViewModel @Inject constructor(
                                 _liveTradeState.value = LiveTradeState.Running(response)
                                 connectToTradeSignals()
                                 startCollectingSignals()
+                                startPeriodicUpdates()
                             } ?: run {
                                 _liveTradeState.value = LiveTradeState.Error(
                                     context.getString(R.string.error_live_trade_no_response)
@@ -416,9 +434,55 @@ class LogViewModel @Inject constructor(
         }
     }
 
+    private fun startPeriodicUpdates() {
+        updateJob?.cancel()
+        updateJob = viewModelScope.launch {
+            while (true) {
+                delay(60000)
+                Log.d(TAG, "Periyodik güncelleme başlatılıyor...")
+                
+                getCandlesticks()
+                
+                when (val result = getLiveTradeStatusUseCase()) {
+                    is Resource.Success -> {
+                        result.data?.firstOrNull()?.let { sessionResponse ->
+                            _liveTradeState.value = LiveTradeState.Running(
+                                TradeResponse(
+                                    message = "LiveTrade güncellendi",
+                                    session_id = sessionResponse.session.id,
+                                    status = TradeStatus(
+                                        is_running = true,
+                                        balance = sessionResponse.session.current_balance,
+                                        profit_loss = sessionResponse.session.current_balance - sessionResponse.session.initial_balance,
+                                        profit_loss_percentage = ((sessionResponse.session.current_balance - sessionResponse.session.initial_balance) / sessionResponse.session.initial_balance) * 100,
+                                        total_trades = sessionResponse.session.total_trades,
+                                        winning_trades = sessionResponse.session.winning_trades,
+                                        losing_trades = sessionResponse.session.losing_trades,
+                                        current_position = null,
+                                        last_price = 0.0,
+                                        last_update = sessionResponse.session.last_update
+                                    ),
+                                    session = sessionResponse.session,
+                                    signals = sessionResponse.signals
+                                )
+                            )
+                        }
+                    }
+                    is Resource.Error -> {
+                        Log.e(TAG, "Durum güncellenirken hata: ${result.message}")
+                    }
+                    is Resource.Loading -> {
+                        // Loading durumunu gösterme
+                    }
+                }
+            }
+        }
+    }
+
     fun stopLiveTrading() {
         viewModelScope.launch {
             try {
+                updateJob?.cancel()
                 _liveTradeState.value = LiveTradeState.Loading
                 
                 when (val result = stopLiveTradeUseCase()) {
@@ -462,12 +526,17 @@ class LogViewModel @Inject constructor(
             getTradeSignalsUseCase().collect { signal ->
                 Log.d(TAG, "Yeni sinyal alındı: $signal")
                 _tradeSignals.value = _tradeSignals.value + signal
+                _state.value = _state.value.copy(
+                    isLoading = false,
+                    error = null
+                )
             }
         }
     }
 
     override fun onCleared() {
         super.onCleared()
+        updateJob?.cancel()
         disconnectFromTradeSignals()
     }
 

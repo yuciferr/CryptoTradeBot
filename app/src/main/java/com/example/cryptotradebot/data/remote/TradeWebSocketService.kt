@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import okhttp3.*
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlinx.coroutines.launch
 
 @Singleton
 class TradeWebSocketService @Inject constructor(
@@ -32,7 +33,10 @@ class TradeWebSocketService @Inject constructor(
                 try {
                     Log.d(TAG, "WebSocket mesajı alındı: $text")
                     val signal = gson.fromJson(text, WebSocketSignal::class.java)
-                    _tradeSignals.tryEmit(signal)
+                    kotlinx.coroutines.GlobalScope.launch {
+                        _tradeSignals.emit(signal)
+                    }
+                    Log.d(TAG, "Sinyal başarıyla emit edildi: $signal")
                 } catch (e: Exception) {
                     Log.e(TAG, "WebSocket mesajı işlenirken hata oluştu", e)
                 }

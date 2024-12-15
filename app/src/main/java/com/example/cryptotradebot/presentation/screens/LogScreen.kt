@@ -1,7 +1,10 @@
 package com.example.cryptotradebot.presentation.screens
 
+import Session
+import Signal
 import WebSocketSignal
 import android.util.Log
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,6 +83,8 @@ fun LogScreen(
     var selectedTabIndex by remember { mutableStateOf(1) }
     val tabs = listOf(stringResource(R.string.log_live), stringResource(R.string.log_backtest))
     var isLiveRunning by remember { mutableStateOf(false) }
+    val liveTradeState by viewModel.liveTradeState.collectAsState()
+    val tradeSignals by viewModel.tradeSignals
     
     // Strateji verilerini al ve ViewModel'e aktar
     LaunchedEffect(Unit) {
@@ -99,9 +104,19 @@ fun LogScreen(
         }
     }
 
-    // Live trade state'ini collect et
-    val liveTradeState by viewModel.liveTradeState.collectAsState()
-    val tradeSignals by viewModel.tradeSignals.collectAsState()
+    // WebSocket sinyallerini dinle
+    LaunchedEffect(liveTradeState) {
+        if (liveTradeState is LogViewModel.LiveTradeState.Running) {
+            Log.d("CryptoTradeBot/Log", "LiveTrade durumu Running, sinyaller dinleniyor")
+        }
+    }
+
+    // Trade Signals'ı dinle
+    LaunchedEffect(tradeSignals) {
+        if (tradeSignals.isNotEmpty()) {
+            Log.d("CryptoTradeBot/Log", "Yeni sinyaller alındı: ${tradeSignals.size}")
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -256,97 +271,10 @@ fun LogScreen(
                         // Live Trade Status
                         when (liveTradeState) {
                             is LogViewModel.LiveTradeState.Running -> {
-                                val status = (liveTradeState as LogViewModel.LiveTradeState.Running).tradeResponse
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(vertical = 8.dp),
-                                    colors = CardDefaults.cardColors(
-                                        containerColor = MaterialTheme.colorScheme.primaryContainer
-                                    )
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(16.dp)
-                                    ) {
-                                        Text(
-                                            text = stringResource(R.string.log_live_trade_status),
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Bold
-                                        )
-                                        Spacer(modifier = Modifier.height(8.dp))
-                                        
-                                        // Session ID
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_session_id),
-                                            value = status.session_id.toString()
-                                        )
-                                        
-                                        // Message
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_status),
-                                            value = status.message
-                                        )
-                                        
-                                        // Running Status
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_is_running),
-                                            value = if (status.status.is_running) "Active" else "Inactive",
-                                            valueColor = if (status.status.is_running) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
-                                        )
-                                        
-                                        // Balance
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_balance),
-                                            value = stringResource(R.string.log_balance_value, status.status.balance)
-                                        )
-                                        
-                                        // Profit/Loss
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_profit_loss),
-                                            value = stringResource(R.string.log_profit_loss_value, status.status.profit_loss_percentage),
-                                            valueColor = if (status.status.profit_loss >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
-                                        )
-                                        
-                                        // Total Trades
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_total_trades),
-                                            value = status.status.total_trades.toString()
-                                        )
-                                        
-                                        // Winning Trades
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_winning_trades),
-                                            value = status.status.winning_trades.toString()
-                                        )
-                                        
-                                        // Win Rate
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_win_rate),
-                                            value = stringResource(
-                                                R.string.log_percentage_format,
-                                                if (status.status.total_trades > 0)
-                                                    (status.status.winning_trades.toFloat() / status.status.total_trades) * 100
-                                                else 0f
-                                            )
-                                        )
-                                        
-                                        // Current Position
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_current_position),
-                                            value = status.status.current_position?.let { pos ->
-                                                stringResource(R.string.log_position_value, pos, status.status.last_price)
-                                            } ?: "-"
-                                        )
-                                        
-                                        // Last Update
-                                        LiveTradeStatusItem(
-                                            title = stringResource(R.string.log_last_update),
-                                            value = status.status.last_update
-                                        )
-                                    }
-                                }
+                                LiveTradeResultsCard(
+                                    session = (liveTradeState as LogViewModel.LiveTradeState.Running).tradeResponse.session,
+                                    signals = tradeSignals
+                                )
                             }
                             is LogViewModel.LiveTradeState.Error -> {
                                 Text(
@@ -358,36 +286,6 @@ fun LogScreen(
                             else -> {}
                         }
 
-                        // Trade Signals
-                        if (tradeSignals.isNotEmpty()) {
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 8.dp),
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.log_trade_signals),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Spacer(modifier = Modifier.height(8.dp))
-                                    LazyColumn(
-                                        modifier = Modifier.heightIn(max = 200.dp)
-                                    ) {
-                                        items(tradeSignals) { signal ->
-                                            Log.d("CryptoTradeBot/Log", "Sinyal görüntüleniyor: $signal")
-                                            TradeSignalItem(signal = signal)
-                                            Divider(modifier = Modifier.padding(vertical = 4.dp))
-                                        }
-                                    }
-                                }
-                            }
-                        }
                     } else {
                         // Backtest Button
                         Button(
@@ -583,57 +481,172 @@ private fun TradeLogItem(
     }
 }
 
+
+
+// Timestamp formatlamak için yardımcı fonksiyon
+private fun formatDateTime(timestamp: String): String {
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+        val outputFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
+        val date = inputFormat.parse(timestamp)
+        outputFormat.format(date!!)
+    } catch (e: Exception) {
+        timestamp
+    }
+}
+
+
+
 @Composable
-private fun LiveTradeStatusItem(
-    title: String,
-    value: String,
-    valueColor: Color = MaterialTheme.colorScheme.onSurface
+private fun LiveTradeResultsCard(
+    session: Session?,
+    signals: List<WebSocketSignal>
 ) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 4.dp),
-        horizontalArrangement = Arrangement.SpaceBetween
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.1f)
+        )
     ) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-        )
-        Text(
-            text = value,
-            style = MaterialTheme.typography.bodyMedium,
-            color = valueColor
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp)
+        ) {
+            Text(
+                text = stringResource(R.string.log_live_trade_results),
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+
+            // İstatistikler
+            session?.let { currentSession ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    StatisticItem(
+                        title = stringResource(R.string.log_total_trades),
+                        value = currentSession.total_trades.toString()
+                    )
+                    StatisticItem(
+                        title = stringResource(R.string.log_winning_trades),
+                        value = currentSession.winning_trades.toString(),
+                        valueColor = Color(0xFF4CAF50)
+                    )
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    StatisticItem(
+                        title = stringResource(R.string.log_current_balance),
+                        value = stringResource(R.string.log_balance_format, currentSession.current_balance),
+                        valueColor = if (currentSession.current_balance >= currentSession.initial_balance) 
+                            Color(0xFF4CAF50) else MaterialTheme.colorScheme.error
+                    )
+                    StatisticItem(
+                        title = stringResource(R.string.log_win_rate),
+                        value = stringResource(R.string.log_percentage_format, currentSession.win_rate),
+                        valueColor = Color(0xFF4CAF50)
+                    )
+                }
+            }
+
+            // İşlem Listesi
+            Text(
+                text = stringResource(R.string.log_trade_signals),
+                style = MaterialTheme.typography.titleSmall,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+            )
+
+            LazyColumn(
+                modifier = Modifier.heightIn(max = 300.dp)
+            ) {
+                items(
+                    items = signals.asReversed(),
+                    key = { "${it.message.signal.timestamp}_${it.message.signal.signal_type}" }
+                ) { signal ->
+                    LiveTradeSignalItem(signal = signal)
+                    Divider(modifier = Modifier.padding(vertical = 8.dp))
+                }
+            }
+        }
     }
 }
 
 @Composable
-private fun TradeSignalItem(signal: WebSocketSignal) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Column {
-            Text(
-                text = stringResource(R.string.log_signal_time, signal.signal.timestamp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-            )
-            Text(
-                text = signal.signal.signal_type,
-                style = MaterialTheme.typography.bodyMedium,
-                color = when (signal.signal.signal_type.lowercase()) {
-                    "buy" -> Color(0xFF4CAF50)
-                    "sell" -> MaterialTheme.colorScheme.error
-                    else -> MaterialTheme.colorScheme.onSurface
-                }
-            )
-        }
-        Text(
-            text = stringResource(R.string.log_signal_price, signal.signal.price),
-            style = MaterialTheme.typography.bodyMedium
+private fun LiveTradeSignalItem(signal: WebSocketSignal) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = when (signal.message.signal.signal_type.uppercase()) {
+                "BUY" -> Color(0xFF4CAF50).copy(alpha = 0.1f)
+                "SELL" -> MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                else -> MaterialTheme.colorScheme.surface
+            }
         )
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = formatDateTime(signal.message.signal.timestamp),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = signal.message.signal.symbol,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = signal.message.signal.signal_type,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = when (signal.message.signal.signal_type.uppercase()) {
+                            "BUY" -> Color(0xFF4CAF50)
+                            "SELL" -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurface
+                        },
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+            Column(
+                horizontalAlignment = Alignment.End
+            ) {
+                Text(
+                    text = stringResource(R.string.log_price_format, signal.message.signal.price),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                signal.message.signal.profit_percentage?.let { profit ->
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.log_profit_format, profit),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = if (profit >= 0) Color(0xFF4CAF50) else MaterialTheme.colorScheme.error,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
     }
 }

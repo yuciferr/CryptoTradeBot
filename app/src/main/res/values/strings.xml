@@ -153,6 +153,9 @@
     <string name="log_sell_format">SELL %.4f %s</string>
     <string name="log_price_format">$ %.2f</string>
     <string name="log_retry">Tekrar Dene</string>
+    <string name="log_trade_signals">Trade Signals</string>
+    <string name="log_profit_loss">Profit/Loss</string>
+    <string name="log_profit_percentage_format">%.2f%%</string>
 
     <!-- Strategy Screen -->
     <string name="strategy_save">Save Strategy</string>
@@ -195,9 +198,7 @@
     <string name="log_live_trade_status">Live Trading Status</string>
     <string name="log_live_trading_idle">Trading not started</string>
     <string name="log_balance">Balance</string>
-    <string name="log_profit_loss">Profit/Loss</string>
     <string name="log_current_position">Current Position</string>
-    <string name="log_trade_signals">Trade Signals</string>
     <string name="error_live_trade_failed">Failed to start live trading</string>
     <string name="error_stop_live_trade_failed">Failed to stop live trading</string>
     <string name="error_live_trade_no_response">Live trading response is empty</string>
@@ -214,4 +215,7 @@
     <string name="log_is_running">Running Status</string>
     <string name="log_winning_trades">Winning Trades</string>
     <string name="log_last_update">Last Update</string>
+    <string name="log_live_trade_results">Live Trade Results</string>
+    <string name="log_current_balance">Current Balance</string>
+    <string name="log_balance_format">Balance Format</string>
 </resources>

@@ -1,7 +1,9 @@
 data class TradeResponse(
     val message: String,
     val session_id: Int,
-    val status: TradeStatus
+    val status: TradeStatus,
+    val session: Session? = null,
+    val signals: Signals? = null
 )
 
 data class TradeStatus(
