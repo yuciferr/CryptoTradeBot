@@ -1,5 +1,6 @@
 package com.example.cryptotradebot.presentation.viewmodel
 
+import Session
 import TradeRequest
 import TradeResponse
 import TradeStatus
@@ -113,6 +114,9 @@ class LogViewModel @Inject constructor(
 
     private val _logs = MutableStateFlow<List<WebSocketSignal>>(emptyList())
     val logs = _logs.asStateFlow()
+
+    private val _tradeHistory = MutableStateFlow<List<WebSocketSignal>>(emptyList())
+    val tradeHistory = _tradeHistory.asStateFlow()
 
     init {
         savedStateHandle.get<String>("selectedStrategyId")?.let { strategyId ->
@@ -344,15 +348,15 @@ class LogViewModel @Inject constructor(
             bollinger = strategy.indicators.find { it.name == "Bollinger Bands" }?.let { indicator ->
                 BollingerSettings(
                     period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 20,
-                    std = indicator.parameters.find { it.name == "Upper Deviation" }?.value?.toDouble() ?: 2.0,
-                    windowDev = indicator.parameters.find { it.name == "Lower Deviation" }?.value?.toDouble() ?: 2.0,
+                    std = indicator.parameters.find { it.name == "Upper Deviation" }?.value ?: 2.0,
+                    windowDev = indicator.parameters.find { it.name == "Lower Deviation" }?.value ?: 2.0,
                     movingAvg = "sma"
                 )
             },
             supertrend = strategy.indicators.find { it.name == "SuperTrend" }?.let { indicator ->
                 SupertrendSettings(
                     period = indicator.parameters.find { it.name == "Period" }?.value?.toInt() ?: 7,
-                    multiplier = indicator.parameters.find { it.name == "Multiplier" }?.value?.toDouble() ?: 0.8
+                    multiplier = indicator.parameters.find { it.name == "Multiplier" }?.value ?: 0.8
                 )
             },
             sma = strategy.indicators.find { it.name == "SMA" }?.let { indicator ->
@@ -441,7 +445,7 @@ class LogViewModel @Inject constructor(
                 delay(60000)
                 Log.d(TAG, "Periyodik güncelleme başlatılıyor...")
                 
-                getCandlesticks()
+                refreshCandlesticks()
                 
                 when (val result = getLiveTradeStatusUseCase()) {
                     is Resource.Success -> {
@@ -488,8 +492,10 @@ class LogViewModel @Inject constructor(
                 when (val result = stopLiveTradeUseCase()) {
                     is Resource.Success -> {
                         disconnectFromTradeSignals()
-                        _liveTradeState.value = LiveTradeState.Idle
-                        _tradeSignals.value = emptyList()
+                        _tradeHistory.value = _tradeSignals.value
+                        _liveTradeState.value = LiveTradeState.Stopped(
+                            lastSession = (liveTradeState.value as? LiveTradeState.Running)?.tradeResponse?.session
+                        )
                     }
                     is Resource.Error -> {
                         _liveTradeState.value = LiveTradeState.Error(
@@ -530,6 +536,29 @@ class LogViewModel @Inject constructor(
                     isLoading = false,
                     error = null
                 )
+                refreshCandlesticks()
+            }
+        }
+    }
+
+    private fun refreshCandlesticks() {
+        viewModelScope.launch {
+            when (val result = getCandlesticksUseCase(
+                symbol = "${_selectedCoin.value}USDT",
+                interval = _selectedInterval.value,
+                limit = 100
+            )) {
+                is Resource.Success -> {
+                    result.data?.let { newCandlesticks ->
+                        _candlesticks.value = newCandlesticks
+                    }
+                }
+                is Resource.Error -> {
+                    Log.e(TAG, "Candlestick güncelleme hatası: ${result.message}")
+                }
+                is Resource.Loading -> {
+                    // Loading state'i göstermek istemiyoruz çünkü arka planda güncelleniyor
+                }
             }
         }
     }
@@ -582,6 +611,7 @@ class LogViewModel @Inject constructor(
         object Idle : LiveTradeState()
         object Loading : LiveTradeState()
         data class Running(val tradeResponse: TradeResponse) : LiveTradeState()
+        data class Stopped(val lastSession: Session?) : LiveTradeState()
         data class Error(val message: String) : LiveTradeState()
     }
 

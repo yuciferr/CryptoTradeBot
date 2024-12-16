@@ -1,10 +1,8 @@
 package com.example.cryptotradebot.presentation.screens
 
 import Session
-import Signal
 import WebSocketSignal
 import android.util.Log
-import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -72,6 +70,8 @@ fun LogScreen(
     viewModel: LogViewModel = hiltViewModel(),
     strategyTitle: String
 ) {
+    var chartKey by remember { mutableStateOf(0) }
+    
     val state = viewModel.state.value
     val candlesticks = viewModel.candlesticks.collectAsState().value
     val selectedCoin = viewModel.selectedCoin.collectAsState().value
@@ -90,15 +90,15 @@ fun LogScreen(
     LaunchedEffect(Unit) {
         navController.previousBackStackEntry?.savedStateHandle?.let { handle ->
             handle.get<String>("strategyJson")?.let { json ->
-                android.util.Log.d("yuci", "LogScreen - Received StrategyJson: $json")
+                Log.d("yuci", "LogScreen - Received StrategyJson: $json")
                 viewModel.updateStrategy(json)
             }
             handle.get<String>("strategyCoin")?.let { coin ->
-                android.util.Log.d("yuci", "LogScreen - Received Coin: $coin")
+                Log.d("yuci", "LogScreen - Received Coin: $coin")
                 viewModel.onCoinSelect(coin)
             }
             handle.get<String>("strategyTimeframe")?.let { timeframe ->
-                android.util.Log.d("yuci", "LogScreen - Received Timeframe: $timeframe")
+                Log.d("yuci", "LogScreen - Received Timeframe: $timeframe")
                 viewModel.onIntervalSelect(timeframe)
             }
         }
@@ -115,6 +115,7 @@ fun LogScreen(
     LaunchedEffect(tradeSignals) {
         if (tradeSignals.isNotEmpty()) {
             Log.d("CryptoTradeBot/Log", "Yeni sinyaller alındı: ${tradeSignals.size}")
+            chartKey++ // Chart'ı yeniden render etmek için key'i güncelle
         }
     }
 
@@ -213,7 +214,82 @@ fun LogScreen(
                                 }
                                 is LogUiState.Success -> {
                                     CandlestickChart(
+                                        key = chartKey, // Chart'ı yeniden render etmek için key ekle
                                         candlesticks = candlesticks,
+                                        tradeSignals = when (selectedTabIndex) {
+                                            0 -> { // Live Trade
+                                                buildMap {
+                                                    // Aktif sinyalleri ekle
+                                                    tradeSignals.forEach { signal ->
+                                                        try {
+                                                            val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                                                .parse(signal.message.signal.timestamp)?.time?.let { time ->
+                                                                    // Timeframe'e göre timestamp'i yuvarla
+                                                                    val interval = when (selectedInterval) {
+                                                                        "1m" -> 60 * 1000L
+                                                                        "3m" -> 3 * 60 * 1000L
+                                                                        "5m" -> 5 * 60 * 1000L
+                                                                        "15m" -> 15 * 60 * 1000L
+                                                                        "30m" -> 30 * 60 * 1000L
+                                                                        "1h" -> 60 * 60 * 1000L
+                                                                        "2h" -> 2 * 60 * 60 * 1000L
+                                                                        "4h" -> 4 * 60 * 60 * 1000L
+                                                                        "6h" -> 6 * 60 * 60 * 1000L
+                                                                        "8h" -> 8 * 60 * 60 * 1000L
+                                                                        "12h" -> 12 * 60 * 60 * 1000L
+                                                                        "1d" -> 24 * 60 * 60 * 1000L
+                                                                        else -> 60 * 60 * 1000L // default 1h
+                                                                    }
+                                                                    (time / interval) * interval
+                                                                } ?: 0L
+                                                            
+                                                            put(timestamp, signal.message.signal.signal_type)
+                                                            Log.d("LogScreen", "Signal mapped: ${signal.message.signal.signal_type} at $timestamp")
+                                                        } catch (e: Exception) {
+                                                            Log.e("LogScreen", "Sinyal timestamp parse hatası", e)
+                                                        }
+                                                    }
+                                                    
+                                                    // Geçmiş sinyalleri ekle (eğer stopped state'deyse)
+                                                    if (liveTradeState is LogViewModel.LiveTradeState.Stopped) {
+                                                        viewModel.tradeHistory.value.forEach { signal ->
+                                                            try {
+                                                                val timestamp = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
+                                                                    .parse(signal.message.signal.timestamp)?.time?.let { time ->
+                                                                        val interval = when (selectedInterval) {
+                                                                            "1m" -> 60 * 1000L
+                                                                            "3m" -> 3 * 60 * 1000L
+                                                                            "5m" -> 5 * 60 * 1000L
+                                                                            "15m" -> 15 * 60 * 1000L
+                                                                            "30m" -> 30 * 60 * 1000L
+                                                                            "1h" -> 60 * 60 * 1000L
+                                                                            "2h" -> 2 * 60 * 60 * 1000L
+                                                                            "4h" -> 4 * 60 * 60 * 1000L
+                                                                            "6h" -> 6 * 60 * 60 * 1000L
+                                                                            "8h" -> 8 * 60 * 60 * 1000L
+                                                                            "12h" -> 12 * 60 * 60 * 1000L
+                                                                            "1d" -> 24 * 60 * 60 * 1000L
+                                                                            else -> 60 * 60 * 1000L
+                                                                        }
+                                                                        (time / interval) * interval
+                                                                    } ?: 0L
+                                                                
+                                                                put(timestamp, signal.message.signal.signal_type)
+                                                                Log.d("LogScreen", "Historical signal mapped: ${signal.message.signal.signal_type} at $timestamp")
+                                                            } catch (e: Exception) {
+                                                                Log.e("LogScreen", "Geçmiş sinyal timestamp parse hatası", e)
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                            1 -> { // Backtest
+                                                backtestResults.associate { result ->
+                                                    result.timestamp to if (result.type == TradeType.BUY) "BUY" else "SELL"
+                                                }
+                                            }
+                                            else -> emptyMap()
+                                        },
                                         modifier = Modifier
                                             .fillMaxWidth()
                                             .weight(1f)
@@ -274,6 +350,12 @@ fun LogScreen(
                                 LiveTradeResultsCard(
                                     session = (liveTradeState as LogViewModel.LiveTradeState.Running).tradeResponse.session,
                                     signals = tradeSignals
+                                )
+                            }
+                            is LogViewModel.LiveTradeState.Stopped -> {
+                                LiveTradeResultsCard(
+                                    session = (liveTradeState as LogViewModel.LiveTradeState.Stopped).lastSession,
+                                    signals = viewModel.tradeHistory.collectAsState().value
                                 )
                             }
                             is LogViewModel.LiveTradeState.Error -> {

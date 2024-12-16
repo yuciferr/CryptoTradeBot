@@ -31,11 +31,17 @@ import kotlin.math.abs
 @Composable
 fun CandlestickChart(
     candlesticks: List<Candlestick>,
-    modifier: Modifier = Modifier
+    tradeSignals: Map<Long, String> = emptyMap(),
+    modifier: Modifier = Modifier,
+    key: Int = 0
 ) {
     var scale by remember { mutableStateOf(1f) }
     var offset by remember { 
         mutableStateOf(-(candlesticks.size * 20f))
+    }
+    
+    LaunchedEffect(key) {
+        offset = -(candlesticks.size * 20f)
     }
     
     val textMeasurer = rememberTextMeasurer()
@@ -184,6 +190,39 @@ fun CandlestickChart(
                         start = Offset(x, 0f),
                         end = Offset(x, chartHeight),
                         strokeWidth = 1f
+                    )
+                }
+            }
+
+            // Trade sinyallerini çiz
+            visibleCandlesticks.forEachIndexed { index, candlestick ->
+                val x = index * (candleWidth + spacing)
+                if (x < -candleWidth || x > size.width + candleWidth) return@forEachIndexed
+
+                tradeSignals[candlestick.openTime]?.let { signalType ->
+                    val high = candlestick.high.toFloat()
+                    val low = candlestick.low.toFloat()
+                    val signalY = when (signalType.uppercase()) {
+                        "BUY" -> {
+                            // Mumun altında göster
+                            chartHeight - (((low - minPrice) / priceRange) * chartHeight) + 20.dp.toPx()
+                        }
+                        "SELL" -> {
+                            // Mumun üstünde göster
+                            chartHeight - (((high - minPrice) / priceRange) * chartHeight) - 30.dp.toPx()
+                        }
+                        else -> return@let
+                    }
+
+                    drawText(
+                        textMeasurer = textMeasurer,
+                        text = if (signalType.uppercase() == "BUY") "👆" else "👇",
+                        style = TextStyle(
+                            fontSize = 16.sp,
+                            color = if (signalType.uppercase() == "BUY") 
+                                Color(0xFF4CAF50) else Color(0xFFD50000)
+                        ),
+                        topLeft = Offset(x + (candleWidth/2) - 8.dp.toPx(), signalY)
                     )
                 }
             }
